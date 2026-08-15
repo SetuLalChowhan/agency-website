@@ -8,9 +8,21 @@ import { dbState } from "../lib/diagnostics";
 import { ActivityLog } from "../models/activity";
 import { ContactSubmission } from "../models/leads";
 
+import { triggerRevalidation } from "../lib/revalidate";
+
 const router = Router();
 
 router.use(requireAuth, requirePermission("system:read"));
+
+/** Manual revalidation trigger from Admin dashboard. */
+router.post(
+  "/revalidate",
+  asyncHandler(async (_req, res) => {
+    await triggerRevalidation(["site", "settings", "theme", "navigation", "footer", "seo", "homepage", "services", "projects", "testimonials", "blog", "faqs", "team", "pages"], ["/"]);
+    ok(res, { revalidated: true });
+  })
+);
+
 
 /** Health of the API + database — public, no secrets. */
 router.get(

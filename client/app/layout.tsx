@@ -133,7 +133,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
       </head>
-      <body>
+      {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) inject
+          attributes into <body> before hydration, which otherwise logs a
+          hydration-mismatch warning in dev. */}
+      <body suppressHydrationWarning>
         <ThemeProvider>
         {maintenance ? (
           <main className="relative flex min-h-svh flex-col items-center justify-center px-5 text-center">

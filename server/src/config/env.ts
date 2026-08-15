@@ -43,7 +43,7 @@ export const env = {
     folder: str("CLOUDINARY_FOLDER", "kern-studio"),
   },
 
-  revalidateSecret: str("REVALIDATE_SECRET", "dev-only-revalidate-secret"),
+  revalidateSecret: str("REVALIDATE_SECRET", "dev-revalidate-secret"),
   revalidateUrl: str("REVALIDATE_URL", "http://localhost:3000/api/revalidate"),
 
   /** Comma-separated DNS resolvers used for hosted databases (e.g. Atlas). */

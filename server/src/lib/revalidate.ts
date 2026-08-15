@@ -11,10 +11,10 @@ export async function triggerRevalidation(tags: string[], paths: string[] = []):
   if (!env.revalidateUrl) return;
   if (!env.revalidateSecret) return;
 
-  // Debounce identical payloads for 5s — bursts of saves shouldn't hammer the client.
+  // Short debounce (300ms) for identical payloads to absorb accidental duplicate triggers
   const key = JSON.stringify({ tags, paths });
   const last = seen.get(key) ?? 0;
-  if (Date.now() - last < 5000) return;
+  if (Date.now() - last < 300) return;
   seen.set(key, Date.now());
 
   try {

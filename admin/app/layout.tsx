@@ -30,7 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body className="bg-ink font-sans text-paper antialiased">
+      {/* suppressHydrationWarning: browser extensions (e.g. Grammarly) inject
+          attributes into <body> before hydration, which otherwise logs a
+          hydration-mismatch warning in dev. */}
+      <body className="bg-ink font-sans text-paper antialiased" suppressHydrationWarning>
         <ThemeProvider>
           <ToastProvider>
             <Shell>{children}</Shell>

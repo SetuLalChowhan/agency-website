@@ -1,12 +1,12 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
-const SECRET = process.env.REVALIDATE_SECRET ?? "dev-only-revalidate-secret";
+const SECRET = process.env.REVALIDATE_SECRET ?? "dev-revalidate-secret";
 
 /**
  * POST /api/revalidate  { secret, tags?, paths? }
  * Called by the CMS server after any content change so the public site
- * picks up edits without a full rebuild. Never exposes the secret.
+ * picks up edits without a full rebuild.
  */
 export async function POST(request: Request) {
   let body: { secret?: string; tags?: string[]; paths?: string[] } = {};
@@ -23,8 +23,13 @@ export async function POST(request: Request) {
   const tags = Array.isArray(body.tags) ? body.tags.filter((t) => typeof t === "string") : [];
   const paths = Array.isArray(body.paths) ? body.paths.filter((p) => typeof p === "string") : [];
 
-  for (const tag of tags) revalidateTag(tag, "max");
+  for (const tag of tags) revalidateTag(tag, { expire: 0 });
   for (const path of paths) revalidatePath(path);
+
+  if (tags.length > 0 && !paths.includes("/")) {
+    revalidatePath("/", "layout");
+  }
 
   return NextResponse.json({ revalidated: true, tags, paths });
 }
+

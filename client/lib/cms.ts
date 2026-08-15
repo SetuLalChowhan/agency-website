@@ -15,7 +15,7 @@ import { clients as fallbackClients } from "@/lib/data/clients";
 const API = process.env.NEXT_PUBLIC_API_URL ?? process.env.PUBLIC_API_URL ?? "http://localhost:4000";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kern.studio";
 
-const REVALIDATE = Number(process.env.CMS_REVALIDATE_SECONDS ?? 60);
+const REVALIDATE = Number(process.env.CMS_REVALIDATE_SECONDS ?? (process.env.NODE_ENV === "development" ? 0 : 60));
 
 type CmsResult<T> = { data: T; fromCms: boolean };
 
@@ -26,20 +26,32 @@ async function cmsFetch<T>(
   revalidate: number = REVALIDATE
 ): Promise<CmsResult<T>> {
   try {
-    const res = await fetch(`${API}${path}`, {
-      next: { revalidate, tags },
+    const fetchOptions: RequestInit = {
       signal: AbortSignal.timeout(3500),
-    });
-    if (!res.ok) return { data: fallback, fromCms: false };
+    };
+    if (revalidate === 0) {
+      fetchOptions.cache = "no-store";
+    } else {
+      fetchOptions.next = { revalidate, tags };
+    }
+    const res = await fetch(`${API}${path}`, fetchOptions);
+    if (!res.ok) {
+      console.warn(`[cmsFetch] HTTP ${res.status} for ${path}`);
+      return { data: fallback, fromCms: false };
+    }
     const json = (await res.json()) as { success?: boolean; data?: T };
     if (!json.success || json.data === undefined || json.data === null) {
+      console.warn(`[cmsFetch] Invalid data for ${path}:`, json);
       return { data: fallback, fromCms: false };
     }
     return { data: json.data, fromCms: true };
-  } catch {
+  } catch (err) {
+    console.error(`[cmsFetch] Fetch error for ${path}:`, (err as Error).message);
     return { data: fallback, fromCms: false };
   }
 }
+
+
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
