@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" fill="none">
+  <rect width="1600" height="1000" fill="#0c0c0a"/>
+  <defs>
+    <radialGradient id="nglow" cx="0.5" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#f1ede3" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#f1ede3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#nglow)"/>
+  <g stroke="#f1ede3" stroke-opacity="0.5">
+    <path d="M180 700 L380 300 L620 540 L840 210 L1080 560 L1330 330 L1460 680" stroke-width="1.4"/>
+    <path d="M380 300 L760 780 L1080 560" stroke-width="1.4"/>
+    <path d="M620 540 L880 900 L1460 680" stroke-width="1.4"/>
+    <path d="M180 700 L560 240 L840 210" stroke-width="1.4"/>
+    <path d="M760 780 L1330 330" stroke-width="1.4"/>
+    <path d="M560 240 L880 900" stroke-width="1.4"/>
+  </g>
+  <g fill="#f1ede3">
+    <circle cx="180" cy="700" r="6"/>
+    <circle cx="380" cy="300" r="8"/>
+    <circle cx="620" cy="540" r="6"/>
+    <circle cx="840" cy="210" r="5"/>
+    <circle cx="1080" cy="560" r="7"/>
+    <circle cx="1330" cy="330" r="6"/>
+    <circle cx="1460" cy="680" r="5"/>
+    <circle cx="760" cy="780" r="8"/>
+    <circle cx="880" cy="900" r="5"/>
+    <circle cx="560" cy="240" r="5"/>
+  </g>
+  <g fill="#d4ff47">
+    <circle cx="380" cy="300" r="4"/>
+    <circle cx="760" cy="780" r="4"/>
+    <circle cx="1080" cy="560" r="4"/>
+  </g>
+  <circle cx="760" cy="780" r="14" stroke="#d4ff47" stroke-opacity="0.4" stroke-width="1.2"/>
+  <circle cx="760" cy="780" r="24" stroke="#d4ff47" stroke-opacity="0.18" stroke-width="1"/>
+  <path d="M920 130 q40 14 0 28" stroke="#d4ff47" stroke-width="1.5" fill="none"/>
+  <text x="135" y="820" fill="#9b978a" font-family="monospace" font-size="20" letter-spacing="6">02 / NOVA</text>
+</svg>

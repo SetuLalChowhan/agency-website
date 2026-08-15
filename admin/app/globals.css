@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0c0c0a;
+  --color-ink-2: #141412;
+  --color-ink-3: #1c1c19;
+  --color-paper: #f1ede3;
+  --color-paper-2: #e6e1d3;
+  --color-acid: #d4ff47;
+  --color-smoke: #9b978a;
+  --color-stone: #6b665a;
+  --color-line: #26261f;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-ink font-sans text-paper;
+  }
+
+  ::selection {
+    background: var(--color-acid);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-acid);
+    outline-offset: 2px;
+  }
+}
+
+/* ------------------------------ Light theme ------------------------------ */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-ink: #ffffff;
+  --color-ink-2: #f6f4ef;
+  --color-ink-3: #ece9e1;
+  --color-paper: #191813;
+  --color-paper-2: #2e2c24;
+  --color-acid: #5f7d10;
+  --color-smoke: #58554c;
+  --color-stone: #8d897e;
+  --color-line: #e2ded2;
+}
+
+/* System mode follows the OS preference (light half of the media query) */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+    --color-ink: #ffffff;
+    --color-ink-2: #f6f4ef;
+    --color-ink-3: #ece9e1;
+    --color-paper: #191813;
+    --color-paper-2: #2e2c24;
+    --color-acid: #5f7d10;
+    --color-smoke: #58554c;
+    --color-stone: #8d897e;
+    --color-line: #e2ded2;
+  }
+}
+
+/* Mono metadata label */
+@utility meta-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@utility display {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+@utility display-logo {
+  font-family: var(--font-sans);
+  letter-spacing: -0.02em;
+}
+
+/* Slim scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3a382f transparent;
+}

@@ -1,0 +1,232 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/*  KERN® — design tokens                                              */
+/* ------------------------------------------------------------------ */
+@theme {
+  --color-ink: #0c0c0a;
+  --color-ink-2: #121210;
+  --color-ink-3: #191914;
+  --color-paper: #f1ede3;
+  --color-paper-2: #e6e1d3;
+  --color-acid: #d4ff47;
+  --color-smoke: #9b978a;
+  --color-stone: #5c574b;
+
+  /* "Panel" sections (inverted cream blocks) — follow the CMS paper/ink so
+     they keep the current look in dark mode; overridden in light mode. */
+  --color-panel: var(--color-paper);
+  --color-panel-2: var(--color-paper-2);
+  --color-panel-ink: var(--color-ink);
+
+  --font-display: var(--font-inter-tight), "Inter Tight", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  --font-accent: var(--font-instrument-serif), "Instrument Serif", ui-serif, serif;
+
+  --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-spin-slow: spin 22s linear infinite;
+  --animate-spin-slower: spin 40s linear infinite;
+  --animate-marquee-fallback: marquee-fallback 36s linear infinite;
+}
+
+@keyframes marquee-fallback {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Base                                                                */
+/* ------------------------------------------------------------------ */
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scrollbar-color: #3a382f #0c0c0a;
+  }
+
+  body {
+    @apply bg-ink font-sans text-paper;
+    font-feature-settings: "ss01", "cv01";
+  }
+
+  ::selection {
+    background: var(--color-acid);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-acid);
+    outline-offset: 3px;
+    border-radius: 1px;
+  }
+
+  /* Hide native cursor when the custom cursor is active (fine pointers only) */
+  @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+
+    html.kern-cursor,
+    html.kern-cursor * {
+      cursor: none !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  @media (max-width: 767px) {
+    html {
+      scrollbar-width: thin;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Light theme                                                         */
+/* ------------------------------------------------------------------ */
+/* Flipping the base tokens gives the whole site a light interpretation.
+   !important wins over the CMS theme's inline styles on <html>; dark
+   mode keeps the CMS-configured colors untouched. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  scrollbar-color: #c8c3b7 #f4f2ec;
+  --color-ink: #ffffff !important;
+  --color-ink-2: #f4f2ec !important;
+  --color-ink-3: #ebe8e1 !important;
+  --color-paper: #16150f !important;
+  --color-paper-2: #2c2a23 !important;
+  --color-acid: #5f7d10 !important;
+  --color-smoke: #55524a !important;
+  --color-stone: #625e53 !important;
+  --color-panel: #f4f2ec !important;
+  --color-panel-2: #ece9e2 !important;
+  --color-panel-ink: #16150f !important;
+}
+
+/* System mode follows the OS preference (light half of the media query) */
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+    scrollbar-color: #c8c3b7 #f4f2ec;
+    --color-ink: #ffffff !important;
+    --color-ink-2: #f4f2ec !important;
+    --color-ink-3: #ebe8e1 !important;
+    --color-paper: #16150f !important;
+    --color-paper-2: #2c2a23 !important;
+    --color-acid: #5f7d10 !important;
+    --color-smoke: #55524a !important;
+    --color-stone: #625e53 !important;
+    --color-panel: #f4f2ec !important;
+    --color-panel-2: #ece9e2 !important;
+    --color-panel-ink: #16150f !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Utilities                                                           */
+/* ------------------------------------------------------------------ */
+@utility text-stroke {
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-paper) 45%, transparent);
+  color: transparent;
+}
+
+/* Ghost wordmark: soft fill + crisp edge — visible, never loud. */
+@utility text-stroke-ghost {
+  -webkit-text-stroke: 1.5px color-mix(in srgb, var(--color-paper) 40%, transparent);
+  color: color-mix(in srgb, var(--color-paper) 9%, transparent);
+}
+
+@utility text-stroke-ink {
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-ink) 55%, transparent);
+  color: transparent;
+}
+
+@utility text-stroke-acid {
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--color-acid) 80%, transparent);
+  color: transparent;
+}
+
+@utility noise-bg {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.62'/%3E%3C/svg%3E");
+}
+
+@utility mask-fade-b {
+  -webkit-mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+}
+
+@utility mask-fade-x {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+}
+
+/* Uppercase display defaults for editorial headings */
+@utility display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: -0.025em;
+  line-height: 0.94;
+}
+
+/* Mono metadata label */
+@utility meta-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Shared visual pieces                                                */
+/* ------------------------------------------------------------------ */
+.hairline-d {
+  border-color: color-mix(in srgb, var(--color-paper) 14%, transparent);
+}
+
+.hairline-l {
+  border-color: color-mix(in srgb, var(--color-ink) 18%, transparent);
+}
+
+/* Hairline inside panel (inverted) sections — follows the panel's text color */
+.hairline-panel {
+  border-color: color-mix(in srgb, var(--color-panel-ink) 18%, transparent);
+}
+
+/* Underlined link sweep */
+.link-sweep {
+  position: relative;
+}
+
+.link-sweep::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  height: 1px;
+  width: 100%;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.link-sweep:hover::after,
+.link-sweep:focus-visible::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
