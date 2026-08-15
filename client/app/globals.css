@@ -105,17 +105,21 @@
 :root[data-theme="light"] {
   color-scheme: light;
   scrollbar-color: #c8c3b7 #f4f2ec;
-  --color-ink: #ffffff !important;
-  --color-ink-2: #f4f2ec !important;
-  --color-ink-3: #ebe8e1 !important;
-  --color-paper: #16150f !important;
-  --color-paper-2: #2c2a23 !important;
-  --color-acid: #5f7d10 !important;
-  --color-smoke: #55524a !important;
-  --color-stone: #625e53 !important;
-  --color-panel: #f4f2ec !important;
-  --color-panel-2: #ece9e2 !important;
-  --color-panel-ink: #16150f !important;
+  /* Light mode is the CMS palette with the dark/light roles swapped, so
+     admin theme changes apply in both themes. The --cms-* source vars are
+     set inline from the CMS theme (see lib/theme.ts); fallbacks preserve
+     the original hardcoded light look when no CMS theme is configured. */
+  --color-ink: var(--cms-paper, #f4f2ec) !important;
+  --color-ink-2: var(--cms-paper-2, #f4f2ec) !important;
+  --color-ink-3: var(--cms-paper-2, #ebe8e1) !important;
+  --color-paper: var(--cms-ink, #16150f) !important;
+  --color-paper-2: var(--cms-ink-2, #2c2a23) !important;
+  --color-acid: color-mix(in srgb, var(--cms-acid, #d4ff47) 48%, var(--cms-ink, #16150f)) !important;
+  --color-smoke: color-mix(in srgb, var(--cms-smoke, #9b978a) 55%, var(--cms-ink, #16150f)) !important;
+  --color-stone: var(--cms-stone, #625e53) !important;
+  --color-panel: var(--cms-paper, #f4f2ec) !important;
+  --color-panel-2: var(--cms-paper-2, #ece9e2) !important;
+  --color-panel-ink: var(--cms-ink, #16150f) !important;
 }
 
 /* System mode follows the OS preference (light half of the media query) */
@@ -123,17 +127,17 @@
   :root[data-theme="system"] {
     color-scheme: light;
     scrollbar-color: #c8c3b7 #f4f2ec;
-    --color-ink: #ffffff !important;
-    --color-ink-2: #f4f2ec !important;
-    --color-ink-3: #ebe8e1 !important;
-    --color-paper: #16150f !important;
-    --color-paper-2: #2c2a23 !important;
-    --color-acid: #5f7d10 !important;
-    --color-smoke: #55524a !important;
-    --color-stone: #625e53 !important;
-    --color-panel: #f4f2ec !important;
-    --color-panel-2: #ece9e2 !important;
-    --color-panel-ink: #16150f !important;
+    --color-ink: var(--cms-paper, #f4f2ec) !important;
+    --color-ink-2: var(--cms-paper-2, #f4f2ec) !important;
+    --color-ink-3: var(--cms-paper-2, #ebe8e1) !important;
+    --color-paper: var(--cms-ink, #16150f) !important;
+    --color-paper-2: var(--cms-ink-2, #2c2a23) !important;
+    --color-acid: color-mix(in srgb, var(--cms-acid, #d4ff47) 48%, var(--cms-ink, #16150f)) !important;
+    --color-smoke: color-mix(in srgb, var(--cms-smoke, #9b978a) 55%, var(--cms-ink, #16150f)) !important;
+    --color-stone: var(--cms-stone, #625e53) !important;
+    --color-panel: var(--cms-paper, #f4f2ec) !important;
+    --color-panel-2: var(--cms-paper-2, #ece9e2) !important;
+    --color-panel-ink: var(--cms-ink, #16150f) !important;
   }
 }
 

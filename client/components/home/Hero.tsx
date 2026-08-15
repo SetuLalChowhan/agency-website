@@ -127,7 +127,7 @@ export function Hero({ content }: { content?: CmsSection }) {
 
         {/* Headline */}
         <motion.h1
-          style={reduced ? undefined : { y: headY, opacity: headOpacity }}
+          style={reduced ? { lineHeight: 1.08 } : { y: headY, opacity: headOpacity, lineHeight: 1.08 }}
           className="display mt-8 text-[clamp(1.7rem,8.4vw,9.8rem)]"
         >
           {lines.map((line, i) => (

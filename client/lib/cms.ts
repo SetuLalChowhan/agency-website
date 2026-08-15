@@ -12,7 +12,7 @@ import { clients as fallbackClients } from "@/lib/data/clients";
 /*  Environment + fetch helpers                                        */
 /* ------------------------------------------------------------------ */
 
-const API = process.env.PUBLIC_API_URL ?? "http://localhost:4000";
+const API = process.env.NEXT_PUBLIC_API_URL ?? process.env.PUBLIC_API_URL ?? "http://localhost:4000";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kern.studio";
 
 const REVALIDATE = Number(process.env.CMS_REVALIDATE_SECONDS ?? 60);

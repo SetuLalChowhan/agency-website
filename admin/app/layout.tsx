@@ -20,14 +20,16 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${plexMono.variable}`} suppressHydrationWarning>
-      {/* Apply the stored theme before paint to avoid a flash of the wrong theme. */}
-      <Script
-        id="kern-theme-init"
-        strategy="beforeInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `(function(){try{var t=localStorage.getItem("kern-admin-theme");if(t!=="light"&&t!=="dark")t="system";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="system";}})();`,
-        }}
-      />
+      <head>
+        {/* Apply the stored theme before paint to avoid a flash of the wrong theme. */}
+        <Script
+          id="kern-theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("kern-admin-theme");if(t!=="light"&&t!=="dark")t="system";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="system";}})();`,
+          }}
+        />
+      </head>
       <body className="bg-ink font-sans text-paper antialiased">
         <ThemeProvider>
           <ToastProvider>

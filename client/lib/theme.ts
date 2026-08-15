@@ -56,5 +56,22 @@ export function themeToCssVars(theme?: CmsTheme | null): Record<string, string> 
   const paper = vars["--color-paper"] ?? vars["--color-heading"] ?? vars["--color-body"];
   if (paper && !vars["--color-paper"]) vars["--color-paper"] = paper;
 
+  // Un-swapped "source" copies of the CMS palette. Light mode re-points the
+  // display tokens at these (see globals.css) so admin theme changes apply in
+  // both themes instead of being overridden by hardcoded light-mode values.
+  const source: Array<[string, string | undefined]> = [
+    ["--cms-ink", vars["--color-ink"]],
+    ["--cms-ink-2", vars["--color-ink-2"]],
+    ["--cms-ink-3", vars["--color-ink-3"]],
+    ["--cms-paper", vars["--color-paper"]],
+    ["--cms-paper-2", vars["--color-paper-2"]],
+    ["--cms-acid", vars["--color-acid"]],
+    ["--cms-smoke", vars["--color-smoke"]],
+    ["--cms-stone", vars["--color-stone"]],
+  ];
+  for (const [token, value] of source) {
+    if (value) vars[token] = value;
+  }
+
   return vars;
 }
