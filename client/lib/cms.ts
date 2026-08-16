@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { headers } from "next/headers";
 
 /* ------------------------------------------------------------------ */
 /*  Environment + fetch helpers                                        */
@@ -8,14 +9,45 @@ import { cache } from "react";
 /*  client NEVER substitutes bundled/static content for live CMS data — */
 /*  if the API cannot be reached the page renders an explicit           */
 /*  "content unavailable" state instead of showing stale content.       */
+/*                                                                      */
+/*  All reads go through the same-origin proxy route                    */
+/*  app/api/cms/[...path], which resolves the CMS base URL server-side  */
+/*  (PUBLIC_API_URL). The site never calls the Express server directly. */
 /* ------------------------------------------------------------------ */
 
-const API =
-  process.env.NEXT_PUBLIC_API_URL ??
-  process.env.PUBLIC_API_URL ??
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL?.trim() || "";
+
+/** Direct CMS base URL — only used as a last-resort fallback below. */
+const CMS_API_URL =
+  process.env.PUBLIC_API_URL?.trim() ||
+  process.env.NEXT_PUBLIC_API_URL?.trim() ||
   (process.env.NODE_ENV === "development" ? "http://localhost:4000" : "");
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kern.studio";
+/**
+ * Origin of this app for the current request — NEVER returns an empty string.
+ * The CMS proxy route lives on the same origin (app/api/cms/[...path]) and
+ * server-side `fetch` requires an absolute URL: a bare relative path throws
+ * "Failed to parse URL" in Node's fetch, and Next's patched fetch can't
+ * resolve it either.
+ *
+ * Resolution order: request host (correct in dev/previews/prod) → configured
+ * site URL → dev default → hardcoded fallback.
+ */
+async function appOrigin(): Promise<string> {
+  try {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    if (host) {
+      const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "http";
+      return `${proto}://${host}`;
+    }
+  } catch {
+    /* headers() unavailable (e.g. prerender without a request) — fall back */
+  }
+  if (SITE_URL) return SITE_URL.replace(/\/+$/, "");
+  if (process.env.NODE_ENV === "development") return "http://localhost:3000";
+  return "https://kern.studio";
+}
 
 const REVALIDATE = Number(process.env.CMS_REVALIDATE_SECONDS ?? (process.env.NODE_ENV === "development" ? 0 : 60));
 
@@ -41,10 +73,15 @@ async function cmsFetch<T>(
   empty: T,
   revalidate: number = REVALIDATE
 ): Promise<CmsResult<T>> {
-  if (!API) {
-    console.error("[cmsFetch] No CMS API URL configured (NEXT_PUBLIC_API_URL / PUBLIC_API_URL)");
-    return { data: empty, fromCms: false };
-  }
+  // /api/v1/... → /api/cms/... (same origin, proxied to the CMS server).
+  // Guard against a relative URL ever reaching fetch: if the origin somehow
+  // failed to resolve, call the CMS API directly instead.
+  const proxyPath = `${await appOrigin()}${path.replace(/^\/api\/v1/, "/api/cms")}`;
+  const url = /^https?:\/\//i.test(proxyPath)
+    ? proxyPath
+    : CMS_API_URL
+      ? `${CMS_API_URL}${path}`
+      : proxyPath;
 
   for (let attempt = 1; attempt <= CMS_MAX_ATTEMPTS; attempt += 1) {
     try {
@@ -57,7 +94,7 @@ async function cmsFetch<T>(
         fetchOptions.next = { revalidate, tags };
       }
 
-      const res = await fetch(`${API}${path}`, fetchOptions);
+      const res = await fetch(url, fetchOptions);
       if (!res.ok) {
         console.warn(`[cmsFetch] HTTP ${res.status} for ${path}`);
         return { data: empty, fromCms: false };
@@ -248,7 +285,7 @@ export type ProcessStep = {
 export const getBootstrap = cache(async (): Promise<CmsResult<CmsBootstrap>> => {
   return cmsFetch<CmsBootstrap>(
     "/api/v1/site/bootstrap",
-    ["site", "settings", "theme", "navigation", "footer", "seo"],
+    ["site", "settings", "theme", "navigation", "footer", "seo", "homepage"],
     {}
   );
 });
@@ -415,7 +452,16 @@ export const getProcessSteps = cache(async (): Promise<CmsResult<ProcessStep[]>>
         title: item.title ?? `Step ${i + 1}`,
         summary: item.value ?? item.body ?? "",
         detail: item.body ?? item.value ?? "",
-        deliverables: Array.isArray(item.paragraphs) ? item.paragraphs : [],
+        // The admin stores deliverables as newline-separated text; tolerate
+        // arrays (older seed data) and strings alike.
+        deliverables: Array.isArray(item.paragraphs)
+          ? item.paragraphs
+          : typeof item.paragraphs === "string"
+            ? item.paragraphs
+                .split(/[\n,]/)
+                .map((s) => s.trim())
+                .filter(Boolean)
+            : [],
       })),
       fromCms: true,
     };

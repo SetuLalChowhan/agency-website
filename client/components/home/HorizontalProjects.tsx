@@ -24,6 +24,8 @@ export function HorizontalProjects({
   const trackRef = useRef<HTMLDivElement>(null);
   const list = projects ?? [];
 
+  const hasProjects = list.length > 0;
+
   useGSAP(
     () => {
       const mm = gsap.matchMedia();
@@ -54,10 +56,11 @@ export function HorizontalProjects({
         };
       });
     },
-    { scope: sectionRef }
+    // Don't scope to a section that never mounts when the list is empty.
+    { scope: hasProjects ? sectionRef : undefined }
   );
 
-  if (list.length === 0) return null;
+  if (!hasProjects) return null;
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden border-t hairline-d bg-ink">

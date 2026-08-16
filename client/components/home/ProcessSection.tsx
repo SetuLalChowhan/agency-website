@@ -19,8 +19,13 @@ export function ProcessSection({
   const sectionRef = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
   const list = steps ?? [];
+  // Only track scroll when there is content to render. The section returns
+  // null for an empty list, so passing the ref unconditionally would leave
+  // framer-motion waiting for an element that never mounts and throw
+  // "Target ref is defined but not hydrated" — which tears down the whole
+  // page during hydration.
   const { scrollYProgress } = useScroll({
-    target: sectionRef,
+    target: list.length > 0 ? sectionRef : undefined,
     offset: ["start 0.7", "end 0.7"],
   });
 

@@ -269,6 +269,29 @@ function SectionDialog({
           </Field>
         )}
 
+        {form.type === "process" && (
+          <Field label="Process steps" hint="Index, title, detail and deliverables (one per line).">
+            <RowsEditor
+              value={(form.items ?? []).map((it) => ({
+                ...it,
+                index: it.index ?? "",
+                title: it.title ?? "",
+                value: it.value ?? "",
+                body: it.body ?? "",
+                paragraphs: Array.isArray(it.paragraphs) ? it.paragraphs.join("\n") : (it.paragraphs as string) ?? "",
+              }))}
+              subfields={[
+                { key: "index", label: "Index (01, 02…)", type: "text" },
+                { key: "title", label: "Title", type: "text" },
+                { key: "value", label: "Summary", type: "textarea" },
+                { key: "body", label: "Detail", type: "textarea" },
+                { key: "paragraphs", label: "Deliverables (one per line)", type: "textarea" },
+              ]}
+              onChange={(v) => set("items", v)}
+            />
+          </Field>
+        )}
+
         {form.type === "about" && (
           <Field label="Facts" hint="Label / value pairs (Founded 2014, Team 14 people…).">
             <RowsEditor

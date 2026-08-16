@@ -24,11 +24,12 @@ function getStored(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Lazy init from storage — the inline <script> in the layout already applied
-  // it pre-paint to avoid a flash, so this matches on first render.
-  const [theme, setThemeState] = useState<Theme>(() =>
-    typeof window === "undefined" ? "system" : getStored()
-  );
+  // Always start at "system" on both server and client so the SSR HTML matches
+  // the first client render (no hydration mismatch on the toggle buttons). The
+  // inline <script> in the layout already applied the stored theme to
+  // <html data-theme="..."> pre-paint, so there is no flash of the wrong
+  // colors; we just sync React state after mount.
+  const [theme, setThemeState] = useState<Theme>("system");
 
   // Apply the chosen theme to <html data-theme="..."> — the light palette in
   // globals.css keys off this attribute.
@@ -36,13 +37,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // Keep tabs in sync when the preference changes elsewhere.
+  // Hydrate React state from the stored preference after the first render.
+  // Deferred a tick so the update lands outside the render/hydration pass
+  // (the pre-paint script already applied <html data-theme> correctly).
   useEffect(() => {
+    const adoptStored = () => setThemeState(getStored());
+    const id = window.setTimeout(adoptStored, 0);
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setThemeState(getStored());
+      if (e.key === STORAGE_KEY) adoptStored();
     };
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   const setTheme = useCallback((t: Theme) => {

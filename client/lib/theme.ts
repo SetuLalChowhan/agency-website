@@ -32,6 +32,38 @@ const TOKEN_MAP: Record<string, keyof CmsTheme> = {
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
+/** Default values the site ships with (matches admin DEFAULTS). */
+const DEFAULT_DISPLAY: Record<string, string> = {
+  "--color-ink": "#0c0c0a",
+  "--color-ink-2": "#121210",
+  "--color-ink-3": "#191914",
+  "--color-paper": "#f1ede3",
+  "--color-paper-2": "#e6e1d3",
+  "--color-acid": "#d4ff47",
+  "--color-smoke": "#9b978a",
+  "--color-stone": "#5c574b",
+};
+
+/**
+ * Semantic brand keys → the display tokens they drive. The site's components
+ * are built on the tailwind tokens (ink/paper/acid/smoke/stone), so when the
+ * admin changes a brand color (accent, background, heading…) it must re-tint
+ * those tokens. We only apply the semantic value when the display token is
+ * still at its default — i.e. the admin changed the brand, not the token
+ * itself — so explicit token edits always win.
+ */
+const SEMANTIC_SOURCES: Array<[string, string[]]> = [
+  ["--color-accent", ["--color-acid"]],
+  ["--color-primary", ["--color-acid"]],
+  ["--color-button", ["--color-acid"]],
+  ["--color-selection", ["--color-acid"]],
+  ["--color-background", ["--color-ink"]],
+  ["--color-surface", ["--color-ink-2", "--color-ink-3"]],
+  ["--color-heading", ["--color-paper"]],
+  ["--color-body", ["--color-paper-2"]],
+  ["--color-muted", ["--color-smoke", "--color-stone"]],
+];
+
 /** Build a style object of resolved CSS variables for the theme. */
 export function themeToCssVars(theme?: CmsTheme | null): Record<string, string> {
   const vars: Record<string, string> = {};
@@ -44,8 +76,19 @@ export function themeToCssVars(theme?: CmsTheme | null): Record<string, string> 
     }
   }
 
-  // Semantic aliases: if the admin changed the brand "primary/accent" but
-  // left the tailwind "acid" token untouched, keep the site in sync.
+  // Brand palette drives the display tokens (only when untouched).
+  for (const [semantic, targets] of SEMANTIC_SOURCES) {
+    const value = vars[semantic];
+    if (!value) continue;
+    for (const target of targets) {
+      const current = vars[target];
+      if (!current || current === DEFAULT_DISPLAY[target]) {
+        vars[target] = value;
+      }
+    }
+  }
+
+  // Fallback aliases for keys that may be absent entirely.
   const acid = vars["--color-acid"] ?? vars["--color-primary"] ?? vars["--color-accent"];
   if (acid) {
     if (!vars["--color-acid"]) vars["--color-acid"] = acid;

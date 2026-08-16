@@ -45,7 +45,30 @@ export default function ThemePage() {
 
   if (loading || !data) return <Spinner label="Loading theme" />;
 
-  const set = (key: string, value: string) => setData((d: any) => ({ ...d, [key]: value }));
+  // Changing a brand color also re-tints the site's display tokens in the
+  // form, so the preview and the saved theme stay consistent. The public
+  // site applies the same cascade in lib/theme.ts — a brand color only
+  // overrides a display token that is still at its default.
+  const CASCADE: Record<string, string[]> = {
+    accent: ["acid"],
+    primary: ["acid"],
+    button: ["acid"],
+    selection: ["acid"],
+    background: ["ink"],
+    surface: ["ink2", "ink3"],
+    heading: ["paper"],
+    body: ["paper2"],
+    muted: ["smoke", "stone"],
+  };
+
+  const set = (key: string, value: string) =>
+    setData((d: any) => {
+      const next = { ...d, [key]: value };
+      for (const target of CASCADE[key] ?? []) {
+        if ((next[target] ?? DEFAULTS[target]) === DEFAULTS[target]) next[target] = value;
+      }
+      return next;
+    });
 
   const reset = () => {
     setData((d: any) => ({ ...d, ...DEFAULTS }));
