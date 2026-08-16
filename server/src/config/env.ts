@@ -47,7 +47,7 @@ export const env = {
   revalidateUrl: str("REVALIDATE_URL", "http://localhost:3000/api/revalidate"),
 
   /** Comma-separated DNS resolvers used for hosted databases (e.g. Atlas). */
-  dnsServers: str("DNS_SERVERS", "8.8.8.8,1.1.1.1")
+  dnsServers: str("DNS_SERVERS")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean),
