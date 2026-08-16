@@ -4,6 +4,7 @@
  * Local development keeps using src/index.ts (which listens on PORT).
  */
 import express, { type Express } from "express";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import mongoose from "mongoose";
 import { createApp } from "../src/app";
 import { assertSecureEnv } from "../src/config/env";
@@ -38,4 +39,10 @@ if (mongoose.connection.readyState === 0) {
   });
 }
 
-export default app;
+// @vercel/node recognizes a plain `(req, res)` function export. An Express
+// app is callable, so delegate to it — this works regardless of the
+// launcher's handler-shape detection (a bare Express-app export is not
+// guaranteed to be recognized and crashes with FUNCTION_INVOCATION_FAILED).
+export default function handler(req: IncomingMessage, res: ServerResponse) {
+  return app(req, res);
+}
