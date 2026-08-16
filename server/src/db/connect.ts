@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
 import dns from "node:dns";
-import { MongoMemoryServer } from "mongodb-memory-server";
 import { env } from "../config/env";
 import { logger } from "../lib/logger";
 
-let memoryServer: MongoMemoryServer | null = null;
+// Typed loosely so mongodb-memory-server stays a lazy import — it must not be
+// bundled into serverless deployments (Vercel), where it can't run anyway.
+let memoryServer: { getUri(): string; stop(): Promise<boolean> } | null = null;
 
 /**
  * Point Node's resolver at explicit public DNS servers. On some Windows
@@ -40,10 +41,12 @@ export async function connectDb(): Promise<void> {
   // Local dev fallback: spin up an in-memory MongoDB when Docker/Atlas is unavailable.
   if (env.nodeEnv === "development" && env.allowMemoryDb) {
     logger.info("Starting in-memory MongoDB (MongoMemoryServer)…");
-    memoryServer = await MongoMemoryServer.create({
+    const { MongoMemoryServer } = await import("mongodb-memory-server");
+    const server = await MongoMemoryServer.create({
       instance: { dbName: "kern" },
     });
-    const uri = memoryServer.getUri();
+    memoryServer = server;
+    const uri = server.getUri();
     await mongoose.connect(uri, { serverSelectionTimeoutMS: 10000 });
     logger.info("In-memory MongoDB connected");
     return;
