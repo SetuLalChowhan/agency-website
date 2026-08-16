@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { projects as fallbackProjects, type Project } from "@/lib/data/projects";
+import type { Project } from "@/lib/cms";
 import { WorkList } from "@/components/projects/WorkList";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import type { CmsSection } from "@/lib/cms";
@@ -12,7 +12,8 @@ export function SelectedWorkSection({
   projects?: Project[];
   content?: CmsSection;
 }) {
-  const list = projects && projects.length > 0 ? projects : fallbackProjects;
+  const list = projects ?? [];
+  if (list.length === 0) return null;
   const featured = list.filter((p) => p.featured);
   const right = content?.meta?.right as string | undefined;
 

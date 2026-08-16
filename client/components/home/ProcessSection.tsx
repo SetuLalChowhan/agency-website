@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion, useScroll } from "framer-motion";
-import { processSteps as fallbackSteps, type ProcessStep } from "@/lib/data/process";
+import type { ProcessStep } from "@/lib/cms";
 import { EASE } from "@/lib/animations";
 import { cn } from "@/lib/utils/cn";
 import { Reveal } from "@/components/ui/Reveal";
@@ -18,7 +18,7 @@ export function ProcessSection({
 }) {
   const sectionRef = useRef<HTMLElement>(null);
   const reduced = useReducedMotion();
-  const list = steps && steps.length > 0 ? steps : fallbackSteps;
+  const list = steps ?? [];
   const { scrollYProgress } = useScroll({
     target: sectionRef,
     offset: ["start 0.7", "end 0.7"],
@@ -27,13 +27,15 @@ export function ProcessSection({
   const [active, setActive] = useState(0);
 
   useEffect(() => {
-    if (reduced) return;
+    if (reduced || list.length === 0) return;
     const unsub = scrollYProgress.on("change", (v) => {
       const idx = Math.min(list.length - 1, Math.max(0, Math.floor(v * list.length)));
       setActive(idx);
     });
     return unsub;
   }, [scrollYProgress, reduced, list.length]);
+
+  if (list.length === 0) return null;
 
   return (
     <section ref={sectionRef} className="border-t hairline-d px-5 py-24 md:px-10 md:py-36">

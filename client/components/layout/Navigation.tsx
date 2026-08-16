@@ -65,9 +65,7 @@ export function Navigation({ items, cta, announcement, settings }: NavigationPro
   const lenis = useLenis();
   const reduced = useReducedMotion();
 
-  const nav = (items && items.length > 0 ? items : (site.nav as unknown as CmsNavItem[])).filter(
-    (item) => item.enabled !== false
-  );
+  const nav = (items ?? []).filter((item) => item.enabled !== false);
   const wordmark = settings?.wordmark ?? site.wordmark;
   const email = settings?.email || site.email;
   const location = settings?.location || site.location;

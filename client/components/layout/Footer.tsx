@@ -26,13 +26,11 @@ export type FooterProps = {
 export function Footer({ nav, settings, footer }: FooterProps) {
   const lenis = useLenis();
 
-  const navItems = (nav && nav.length > 0 ? nav : (site.nav as unknown as CmsNavItem[])).filter(
-    (item) => item.enabled !== false
-  );
+  const navItems = (nav ?? []).filter((item) => item.enabled !== false);
   const withContact = [...navItems, { label: "Contact", href: "/contact" }];
   const columns = footer?.columns && footer.columns.length > 0 ? footer.columns : null;
   const socials =
-    footer?.socials && footer.socials.length > 0 ? footer.socials : (settings?.socials ?? site.socials);
+    footer?.socials && footer.socials.length > 0 ? footer.socials : (settings?.socials ?? []);
   const email = footer?.contact?.email || settings?.email || site.email;
   const location = settings?.location || site.location;
   const wordmark = settings?.wordmark ?? site.wordmark;

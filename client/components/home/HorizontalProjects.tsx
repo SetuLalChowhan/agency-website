@@ -7,7 +7,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { ArrowUpRight } from "lucide-react";
-import { projects as fallbackProjects, type Project } from "@/lib/data/projects";
+import type { Project } from "@/lib/cms";
 import { Reveal } from "@/components/ui/Reveal";
 import type { CmsSection } from "@/lib/cms";
 
@@ -22,7 +22,7 @@ export function HorizontalProjects({
 }) {
   const sectionRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const list = projects && projects.length > 0 ? projects : fallbackProjects;
+  const list = projects ?? [];
 
   useGSAP(
     () => {
@@ -56,6 +56,8 @@ export function HorizontalProjects({
     },
     { scope: sectionRef }
   );
+
+  if (list.length === 0) return null;
 
   return (
     <section ref={sectionRef} className="relative overflow-hidden border-t hairline-d bg-ink">

@@ -1,6 +1,5 @@
 "use client";
 
-import { clients as fallbackClients } from "@/lib/data/clients";
 import { Reveal } from "@/components/ui/Reveal";
 import { cn } from "@/lib/utils/cn";
 
@@ -11,7 +10,8 @@ export function ClientsSection({
   clients?: Array<{ name: string; mark?: string }>;
   eyebrow?: string;
 }) {
-  const list = clients && clients.length > 0 ? clients : fallbackClients;
+  const list = clients ?? [];
+  if (list.length === 0) return null;
 
   return (
     <section className="border-t hairline-panel bg-panel px-5 py-20 text-panel-ink md:px-10 md:py-28">

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { articles as fallbackArticles, type Article } from "@/lib/data/insights";
+import type { Article } from "@/lib/cms";
 import { HoverPreview } from "@/components/ui/HoverPreview";
 import { Reveal } from "@/components/ui/Reveal";
 
@@ -14,14 +14,16 @@ export function InsightsTeaser({
   articles?: Article[];
   showHeader?: boolean;
 }) {
-  const list = articles && articles.length > 0 ? articles : fallbackArticles;
+  const list = articles ?? [];
   const [hovered, setHovered] = useState<string | null>(null);
-  const [previewSlug, setPreviewSlug] = useState(list[0].slug);
+  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
 
   const handleHover = (slug: string | null) => {
     if (slug) setPreviewSlug(slug);
     setHovered(slug);
   };
+
+  if (list.length === 0) return null;
 
   const preview = list.find((a) => a.slug === previewSlug) ?? list[0];
 

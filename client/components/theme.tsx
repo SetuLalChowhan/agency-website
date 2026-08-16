@@ -24,13 +24,11 @@ function getStored(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system");
-
-  // Read the stored preference once mounted (the inline <script> in the layout
-  // already applied it pre-paint to avoid a flash).
-  useEffect(() => {
-    setThemeState(getStored());
-  }, []);
+  // Lazy init from storage — the inline <script> in the layout already applied
+  // it pre-paint to avoid a flash, so this matches on first render.
+  const [theme, setThemeState] = useState<Theme>(() =>
+    typeof window === "undefined" ? "system" : getStored()
+  );
 
   // Apply the chosen theme to <html data-theme="..."> — the light palette in
   // globals.css keys off this attribute.

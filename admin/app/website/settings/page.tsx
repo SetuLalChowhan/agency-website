@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { useSingleton } from "@/lib/singleton";
 import { Button, Card, Field, Input, Spinner, useToast } from "@/components/ui";
 import { ImageField } from "@/components/fields";
@@ -25,14 +25,8 @@ export default function SettingsPage() {
 
   const submit = async () => {
     const cleanSocials = socials.filter((s) => s.label.trim() || s.url.trim());
-    const ok = await save({ ...data, socials: cleanSocials });
-    if (ok) {
-      try {
-        await api("/api/v1/admin/diagnostics/revalidate", { method: "POST" });
-      } catch {
-        /* revalidation happens via server trigger anyway */
-      }
-    }
+    // The server triggers targeted cache revalidation after a successful save.
+    await save({ ...data, socials: cleanSocials });
   };
 
   return (

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getArticle as getCmsArticle, getArticles } from "@/lib/cms";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { RevealImage } from "@/components/ui/RevealImage";
 import { Reveal } from "@/components/ui/Reveal";
 import { FinalCTA } from "@/components/home/FinalCTA";
@@ -16,7 +17,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const article = await getCmsArticle(slug);
+  const { data: article } = await getCmsArticle(slug);
   if (!article) return {};
   return {
     title: article.title,
@@ -34,10 +35,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ArticlePage({ params }: Props) {
   const { slug } = await params;
-  const article = await getCmsArticle(slug);
+  const [articleRes, listRes] = await Promise.all([getCmsArticle(slug), getArticles()]);
+  if (!articleRes.fromCms || !listRes.fromCms) return <CmsUnavailable />;
+  const article = articleRes.data;
   if (!article) notFound();
 
-  const { data: articles } = await getArticles();
+  const articles = listRes.data;
   const related = articles.filter((a) => a.slug !== slug).slice(0, 2);
 
   return (

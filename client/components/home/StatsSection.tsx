@@ -1,15 +1,13 @@
 "use client";
 
-import { site } from "@/lib/data/site";
 import { Counter } from "@/components/ui/Counter";
 import { cn } from "@/lib/utils/cn";
 
 export type StatItem = { value: number | string; suffix?: string; label: string };
 
-const FALLBACK: StatItem[] = site.stats as unknown as StatItem[];
-
 export function StatsSection({ stats }: { stats?: StatItem[] }) {
-  const list = stats && stats.length > 0 ? stats : FALLBACK;
+  const list = stats ?? [];
+  if (list.length === 0) return null;
 
   return (
     <section className="border-t hairline-panel bg-panel text-panel-ink" aria-label="Studio statistics">

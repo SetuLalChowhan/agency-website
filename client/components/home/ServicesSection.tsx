@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { services as fallbackServices, type Service } from "@/lib/data/services";
+import type { Service } from "@/lib/cms";
 import { EASE } from "@/lib/animations";
 import { cn } from "@/lib/utils/cn";
 import { Reveal } from "@/components/ui/Reveal";
@@ -24,7 +24,10 @@ export function ServicesSection({
   header?: SectionHeaderContent;
 }) {
   const [active, setActive] = useState(0);
-  const list = services && services.length > 0 ? services : fallbackServices;
+  const list = services ?? [];
+  if (list.length === 0) return null;
+
+  const activeIndex = Math.min(active, list.length - 1);
 
   return (
     <section id="services" className="border-t hairline-panel bg-panel px-5 py-24 text-panel-ink md:px-10 md:py-36">
@@ -49,7 +52,7 @@ export function ServicesSection({
 
         <div className="mt-14 md:mt-20">
           {list.map((service, i) => {
-            const isActive = active === i;
+            const isActive = activeIndex === i;
             return (
               <div key={service.title} className="relative">
                 <button

@@ -1,9 +1,8 @@
-import { site as fallbackSite } from "@/lib/data/site";
-import type { Service } from "@/lib/data/services";
-import type { Project } from "@/lib/data/projects";
-import type { Article } from "@/lib/data/insights";
-import type { Testimonial } from "@/lib/data/testimonials";
-import type { ProcessStep } from "@/lib/data/process";
+import type { Service } from "@/lib/cms";
+import type { Project } from "@/lib/cms";
+import type { Article } from "@/lib/cms";
+import type { Testimonial } from "@/lib/cms";
+import type { ProcessStep } from "@/lib/cms";
 import {
   getBootstrap,
   getServices,
@@ -14,6 +13,7 @@ import {
   getArticles,
   type CmsSection,
 } from "@/lib/cms";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { Hero } from "@/components/home/Hero";
 import { Marquee } from "@/components/home/Marquee";
 import { SelectedWorkSection } from "@/components/site/SelectedWorkSection";
@@ -44,7 +44,8 @@ function renderSection(section: CmsSection, data: HomeData) {
       return <Hero content={section} />;
 
     case "marquee": {
-      const items = section.marquee?.length ? section.marquee : [...fallbackSite.marquee];
+      const items = section.marquee ?? [];
+      if (items.length === 0) return null;
       return (
         <section className="border-t hairline-d" aria-label="What we do — overview">
           <p className="sr-only">{items.join(", ")}</p>
@@ -103,59 +104,45 @@ function renderSection(section: CmsSection, data: HomeData) {
 }
 
 export default async function HomePage() {
-  const { data: bootstrap } = await getBootstrap();
+  const { data: bootstrap, fromCms: bootstrapOk } = await getBootstrap();
+  if (!bootstrapOk) return <CmsUnavailable />;
   const sections = bootstrap.homepage?.sections ?? [];
 
-  const [{ data: services }, { data: projects }, { data: testimonials }, processSteps, { data: clients }, { data: articles }] =
-    await Promise.all([
-      getServices(),
-      getProjects(),
-      getTestimonials(),
-      getProcessSteps(),
-      getClients(),
-      getArticles(),
-    ]);
+  const [servicesRes, projectsRes, testimonialsRes, processRes, clientsRes, articlesRes] = await Promise.all([
+    getServices(),
+    getProjects(),
+    getTestimonials(),
+    getProcessSteps(),
+    getClients(),
+    getArticles(),
+  ]);
 
-  const data: HomeData = { services, projects, testimonials, processSteps, clients, articles };
-
-  // CMS-driven home — sections can be reordered, disabled, and edited in the admin.
-  if (sections.length > 0) {
-    return (
-      <>
-        {sections.map((section) => (
-          <div key={section.key ?? section.type}>{renderSection(section, data)}</div>
-        ))}
-      </>
-    );
+  if (
+    !servicesRes.fromCms ||
+    !projectsRes.fromCms ||
+    !testimonialsRes.fromCms ||
+    !processRes.fromCms ||
+    !clientsRes.fromCms ||
+    !articlesRes.fromCms
+  ) {
+    return <CmsUnavailable />;
   }
 
-  // Fallback — the original hardcoded composition, fed by the same data
-  // helpers (which themselves fall back to the bundled content when the
-  // CMS is unreachable).
+  const data: HomeData = {
+    services: servicesRes.data,
+    projects: projectsRes.data,
+    testimonials: testimonialsRes.data,
+    processSteps: processRes.data,
+    clients: clientsRes.data,
+    articles: articlesRes.data,
+  };
+
+  // CMS-driven home — sections can be reordered, disabled, and edited in the admin.
   return (
     <>
-      <Hero />
-
-      {/* Capabilities marquee */}
-      <section className="border-t hairline-d" aria-label="What we do — overview">
-        <p className="sr-only">
-          Strategy, design, development, branding, AI and digital products.
-        </p>
-        <Marquee items={fallbackSite.marquee} size="lg" className="py-7 md:py-10" />
-        <div className="border-t hairline-d" />
-        <Marquee items={[...fallbackSite.marquee].reverse()} reverse size="sm" className="py-4 md:py-5" />
-      </section>
-
-      <SelectedWorkSection projects={projects} />
-      <HorizontalProjects projects={projects} />
-      <ServicesSection services={services} />
-      <ProcessSection steps={processSteps} />
-      <AboutTeaser />
-      <StatsSection />
-      <Testimonials items={testimonials} />
-      <ClientsSection />
-      <InsightsTeaser />
-      <FinalCTA />
+      {sections.map((section) => (
+        <div key={section.key ?? section.type}>{renderSection(section, data)}</div>
+      ))}
     </>
   );
 }

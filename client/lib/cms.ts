@@ -1,57 +1,89 @@
 import "server-only";
 import { cache } from "react";
-import { site as fallbackSite } from "@/lib/data/site";
-import { services as fallbackServices, type Service } from "@/lib/data/services";
-import { projects as fallbackProjects, type Project } from "@/lib/data/projects";
-import { articles as fallbackArticles, type Article } from "@/lib/data/insights";
-import { testimonials as fallbackTestimonials, type Testimonial } from "@/lib/data/testimonials";
-import { processSteps as fallbackProcess, type ProcessStep } from "@/lib/data/process";
-import { clients as fallbackClients } from "@/lib/data/clients";
 
 /* ------------------------------------------------------------------ */
 /*  Environment + fetch helpers                                        */
 /* ------------------------------------------------------------------ */
+/*  The CMS API is the single source of truth for site content. The    */
+/*  client NEVER substitutes bundled/static content for live CMS data — */
+/*  if the API cannot be reached the page renders an explicit           */
+/*  "content unavailable" state instead of showing stale content.       */
+/* ------------------------------------------------------------------ */
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? process.env.PUBLIC_API_URL ?? "http://localhost:4000";
+const API =
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "development" ? "http://localhost:4000" : "");
+
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kern.studio";
 
 const REVALIDATE = Number(process.env.CMS_REVALIDATE_SECONDS ?? (process.env.NODE_ENV === "development" ? 0 : 60));
 
-type CmsResult<T> = { data: T; fromCms: boolean };
+/** How long we wait for the CMS before retrying / giving up. */
+const CMS_TIMEOUT_MS = 8000;
+/** Max attempts per request (1 initial + 1 retry). */
+const CMS_MAX_ATTEMPTS = 2;
+
+export type CmsResult<T> = { data: T; fromCms: boolean };
+
+function isRetryable(err: unknown): boolean {
+  // Network failures, aborts (timeouts) and 5xx are worth retrying once.
+  if (err instanceof Error) {
+    const name = err.name;
+    if (name === "TimeoutError" || name === "AbortError") return true;
+  }
+  return false;
+}
 
 async function cmsFetch<T>(
   path: string,
   tags: string[],
-  fallback: T,
+  empty: T,
   revalidate: number = REVALIDATE
 ): Promise<CmsResult<T>> {
-  try {
-    const fetchOptions: RequestInit = {
-      signal: AbortSignal.timeout(3500),
-    };
-    if (revalidate === 0) {
-      fetchOptions.cache = "no-store";
-    } else {
-      fetchOptions.next = { revalidate, tags };
-    }
-    const res = await fetch(`${API}${path}`, fetchOptions);
-    if (!res.ok) {
-      console.warn(`[cmsFetch] HTTP ${res.status} for ${path}`);
-      return { data: fallback, fromCms: false };
-    }
-    const json = (await res.json()) as { success?: boolean; data?: T };
-    if (!json.success || json.data === undefined || json.data === null) {
-      console.warn(`[cmsFetch] Invalid data for ${path}:`, json);
-      return { data: fallback, fromCms: false };
-    }
-    return { data: json.data, fromCms: true };
-  } catch (err) {
-    console.error(`[cmsFetch] Fetch error for ${path}:`, (err as Error).message);
-    return { data: fallback, fromCms: false };
+  if (!API) {
+    console.error("[cmsFetch] No CMS API URL configured (NEXT_PUBLIC_API_URL / PUBLIC_API_URL)");
+    return { data: empty, fromCms: false };
   }
+
+  for (let attempt = 1; attempt <= CMS_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const fetchOptions: RequestInit = {
+        signal: AbortSignal.timeout(CMS_TIMEOUT_MS),
+      };
+      if (revalidate === 0) {
+        fetchOptions.cache = "no-store";
+      } else {
+        fetchOptions.next = { revalidate, tags };
+      }
+
+      const res = await fetch(`${API}${path}`, fetchOptions);
+      if (!res.ok) {
+        console.warn(`[cmsFetch] HTTP ${res.status} for ${path}`);
+        return { data: empty, fromCms: false };
+      }
+
+      const json = (await res.json()) as { success?: boolean; data?: T };
+      if (!json.success || json.data === undefined || json.data === null) {
+        console.warn(`[cmsFetch] Invalid data for ${path}:`, json);
+        return { data: empty, fromCms: false };
+      }
+      return { data: json.data, fromCms: true };
+    } catch (err) {
+      const lastAttempt = attempt === CMS_MAX_ATTEMPTS;
+      console.error(
+        lastAttempt ? `[cmsFetch] Fetch failed for ${path}` : `[cmsFetch] Retrying ${path}`,
+        (err as Error).message
+      );
+      if (!isRetryable(err) || lastAttempt) {
+        return { data: empty, fromCms: false };
+      }
+      // Small backoff before the retry.
+      await new Promise((r) => setTimeout(r, 250 * attempt));
+    }
+  }
+  return { data: empty, fromCms: false };
 }
-
-
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -156,12 +188,69 @@ export type CmsBootstrap = {
   homepage?: { sections?: CmsSection[] };
 };
 
+export type Service = {
+  index: string;
+  title: string;
+  tagline: string;
+  description: string;
+  items: string[];
+  tools: string[];
+};
+
+export type Project = {
+  slug: string;
+  index: string;
+  title: string;
+  category: string;
+  year: string;
+  client: string;
+  description: string;
+  disciplines: string[];
+  services: string[];
+  art: string;
+  outcomes: { value: string; label: string }[];
+  narrative: { heading: string; body: string }[];
+  featured: boolean;
+};
+
+export type Article = {
+  slug: string;
+  category: "Thinking" | "Making" | "Exploring";
+  title: string;
+  date: string;
+  dateISO: string;
+  readingTime: string;
+  excerpt: string;
+  art: string;
+  body: { heading: string; paragraphs: string[] }[];
+  pullQuote: string;
+};
+
+export type Testimonial = {
+  quote: string;
+  name: string;
+  role: string;
+  company: string;
+};
+
+export type ProcessStep = {
+  index: string;
+  title: string;
+  summary: string;
+  detail: string;
+  deliverables: string[];
+};
+
 /* ------------------------------------------------------------------ */
 /*  Bootstrap                                                          */
 /* ------------------------------------------------------------------ */
 
 export const getBootstrap = cache(async (): Promise<CmsResult<CmsBootstrap>> => {
-  return cmsFetch<CmsBootstrap>("/api/v1/site/bootstrap", ["site", "settings", "theme", "navigation", "footer", "seo"], {});
+  return cmsFetch<CmsBootstrap>(
+    "/api/v1/site/bootstrap",
+    ["site", "settings", "theme", "navigation", "footer", "seo"],
+    {}
+  );
 });
 
 export const getSiteUrl = () => SITE_URL;
@@ -206,10 +295,11 @@ type RawArticle = Article & {
   body?: Array<{ heading: string; paragraphs: string[] }>;
 };
 
-function normalizeArticle(raw: RawArticle, index: number): Article {
-  const catName = typeof raw.category === "object" && raw.category !== null
-    ? String((raw.category as { name?: string }).name ?? "Thinking")
-    : String(raw.category ?? "Thinking");
+function normalizeArticle(raw: RawArticle): Article {
+  const catName =
+    typeof raw.category === "object" && raw.category !== null
+      ? String((raw.category as { name?: string }).name ?? "Thinking")
+      : String(raw.category ?? "Thinking");
   const cat = (["Thinking", "Making", "Exploring"] as const).includes(catName as never)
     ? (catName as Article["category"])
     : "Thinking";
@@ -238,9 +328,9 @@ export const getServices = cache(async (): Promise<CmsResult<Service[]>> => {
   const res = await cmsFetch<Array<Partial<Service> & { _id?: string; order?: number }>>(
     "/api/v1/services?limit=50",
     ["services"],
-    fallbackServices as unknown as Array<Partial<Service> & { _id?: string; order?: number }>
+    []
   );
-  if (!res.fromCms) return res as CmsResult<Service[]>;
+  if (!res.fromCms) return { data: [], fromCms: false };
   const data = res.data
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((s, i): Service => ({
@@ -255,60 +345,55 @@ export const getServices = cache(async (): Promise<CmsResult<Service[]>> => {
 });
 
 export const getProjects = cache(async (): Promise<CmsResult<Project[]>> => {
-  const res = await cmsFetch<Array<Partial<RawProject>>>(
-    "/api/v1/projects?limit=100",
-    ["projects"],
-    fallbackProjects as unknown as Array<Partial<RawProject>>
-  );
-  if (!res.fromCms) return res as CmsResult<Project[]>;
+  const res = await cmsFetch<Array<Partial<RawProject>>>("/api/v1/projects?limit=100", ["projects"], []);
+  if (!res.fromCms) return { data: [], fromCms: false };
   const data = res.data
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((p, i) => normalizeProject(p as RawProject, i));
   return { data, fromCms: true };
 });
 
-export const getProject = cache(async (slug: string): Promise<Project | null> => {
+export const getProject = cache(async (slug: string): Promise<CmsResult<Project | null>> => {
   const { data, fromCms } = await getProjects();
   const found = data.find((p) => p.slug === slug);
-  if (found) return found;
+  if (found) return { data: found, fromCms: true };
   if (fromCms) {
     const res = await cmsFetch<RawProject>(`/api/v1/projects/${slug}`, ["projects"], null as unknown as RawProject, 30);
-    if (res.data) return normalizeProject(res.data, 0);
+    if (res.fromCms && res.data) return { data: normalizeProject(res.data, 0), fromCms: true };
   }
-  return null;
+  return { data: null, fromCms };
 });
 
 export const getArticles = cache(async (): Promise<CmsResult<Article[]>> => {
-  const res = await cmsFetch<Array<Partial<RawArticle>>>(
-    "/api/v1/blog?limit=100",
-    ["blog"],
-    fallbackArticles as unknown as Array<Partial<RawArticle>>
-  );
-  if (!res.fromCms) return res as CmsResult<Article[]>;
+  const res = await cmsFetch<Array<Partial<RawArticle>>>("/api/v1/blog?limit=100", ["blog"], []);
+  if (!res.fromCms) return { data: [], fromCms: false };
   const data = res.data
-    .sort((a, b) => new Date((b.publishedAt as string) ?? 0).getTime() - new Date((a.publishedAt as string) ?? 0).getTime())
-    .map((a, i) => normalizeArticle(a as RawArticle, i));
+    .sort(
+      (a, b) =>
+        new Date((b.publishedAt as string) ?? 0).getTime() - new Date((a.publishedAt as string) ?? 0).getTime()
+    )
+    .map((a) => normalizeArticle(a as RawArticle));
   return { data, fromCms: true };
 });
 
-export const getArticle = cache(async (slug: string): Promise<Article | null> => {
+export const getArticle = cache(async (slug: string): Promise<CmsResult<Article | null>> => {
   const { data, fromCms } = await getArticles();
   const found = data.find((a) => a.slug === slug);
-  if (found) return found;
+  if (found) return { data: found, fromCms: true };
   if (fromCms) {
     const res = await cmsFetch<RawArticle>(`/api/v1/blog/${slug}`, ["blog"], null as unknown as RawArticle, 30);
-    if (res.data) return normalizeArticle(res.data, 0);
+    if (res.fromCms && res.data) return { data: normalizeArticle(res.data), fromCms: true };
   }
-  return null;
+  return { data: null, fromCms };
 });
 
 export const getTestimonials = cache(async (): Promise<CmsResult<Testimonial[]>> => {
   const res = await cmsFetch<Array<Partial<Testimonial> & { _id?: string; order?: number }>>(
     "/api/v1/testimonials?limit=50",
     ["testimonials"],
-    fallbackTestimonials as unknown as Array<Partial<Testimonial> & { _id?: string; order?: number }>
+    []
   );
-  if (!res.fromCms) return res as CmsResult<Testimonial[]>;
+  if (!res.fromCms) return { data: [], fromCms: false };
   const data = res.data.sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((t) => ({
     quote: t.quote ?? "",
     name: t.name ?? "",
@@ -319,61 +404,74 @@ export const getTestimonials = cache(async (): Promise<CmsResult<Testimonial[]>>
 });
 
 /** Process steps come from the homepage "process" section when present. */
-export const getProcessSteps = cache(async (): Promise<ProcessStep[]> => {
+export const getProcessSteps = cache(async (): Promise<CmsResult<ProcessStep[]>> => {
   const { data, fromCms } = await getBootstrap();
   const processSection = data.homepage?.sections?.find((s) => s.type === "process");
   const items = processSection?.items;
   if (fromCms && items && items.length > 0) {
-    return items.map((item, i): ProcessStep => ({
-      index: item.index ?? padIndex(i),
-      title: item.title ?? `Step ${i + 1}`,
-      summary: item.value ?? item.body ?? "",
-      detail: item.body ?? item.value ?? "",
-      deliverables: Array.isArray(item.paragraphs) ? item.paragraphs : [],
-    }));
-  }
-  return fallbackProcess;
-});
-
-export const getClients = cache(async (): Promise<CmsResult<Array<{ name: string; mark?: string }>>> => {
-  const { data, fromCms } = await getBootstrap();
-  const clientsSection = data.homepage?.sections?.find((s) => s.type === "clients");
-  if (fromCms && clientsSection?.clients && clientsSection.clients.length > 0) {
     return {
-      data: clientsSection.clients.map((c) => ({ name: c.name ?? "", mark: c.mark ?? "" })),
+      data: items.map((item, i): ProcessStep => ({
+        index: item.index ?? padIndex(i),
+        title: item.title ?? `Step ${i + 1}`,
+        summary: item.value ?? item.body ?? "",
+        detail: item.body ?? item.value ?? "",
+        deliverables: Array.isArray(item.paragraphs) ? item.paragraphs : [],
+      })),
       fromCms: true,
     };
   }
-  return { data: fallbackClients, fromCms: true };
+  return { data: [], fromCms };
 });
 
-export const getFAQs = cache(async (): Promise<CmsResult<Array<{ question: string; answer: string; category?: string }>>> => {
-  return cmsFetch<Array<{ question: string; answer: string; category?: string }>>(
-    "/api/v1/faqs?limit=50",
-    ["faqs"],
-    []
-  );
-});
+export const getClients = cache(
+  async (): Promise<CmsResult<Array<{ name: string; mark?: string }>>> => {
+    const { data, fromCms } = await getBootstrap();
+    const clientsSection = data.homepage?.sections?.find((s) => s.type === "clients");
+    if (fromCms && clientsSection?.clients && clientsSection.clients.length > 0) {
+      return {
+        data: clientsSection.clients.map((c) => ({ name: c.name ?? "", mark: c.mark ?? "" })),
+        fromCms: true,
+      };
+    }
+    return { data: [], fromCms };
+  }
+);
+
+export const getFAQs = cache(
+  async (): Promise<CmsResult<Array<{ question: string; answer: string; category?: string }>>> => {
+    return cmsFetch<Array<{ question: string; answer: string; category?: string }>>(
+      "/api/v1/faqs?limit=50",
+      ["faqs"],
+      []
+    );
+  }
+);
 
 export const getTeam = cache(async (): Promise<CmsResult<Array<Record<string, unknown>>>> => {
   return cmsFetch<Array<Record<string, unknown>>>("/api/v1/team?limit=50", ["team"], []);
 });
 
-export const getPage = cache(async (slug: string): Promise<Record<string, unknown> | null> => {
-  const res = await cmsFetch<Record<string, unknown>>(`/api/v1/pages/${slug}`, ["pages"], null as unknown as Record<string, unknown>, 60);
-  return res.data ?? null;
+export const getPage = cache(async (slug: string): Promise<CmsResult<Record<string, unknown> | null>> => {
+  const res = await cmsFetch<Record<string, unknown>>(
+    `/api/v1/pages/${slug}`,
+    ["pages"],
+    null as unknown as Record<string, unknown>,
+    60
+  );
+  return { data: res.data ?? null, fromCms: res.fromCms };
 });
 
 /** Ordered, enabled homepage sections. */
-export const getHomeSections = cache(async (): Promise<CmsSection[]> => {
+export const getHomeSections = cache(async (): Promise<CmsResult<CmsSection[]>> => {
   const { data, fromCms } = await getBootstrap();
   const sections = data.homepage?.sections;
   if (fromCms && Array.isArray(sections)) {
-    return sections
-      .filter((s) => s.enabled !== false)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return {
+      data: sections.filter((s) => s.enabled !== false).sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+      fromCms: true,
+    };
   }
-  return [];
+  return { data: [], fromCms };
 });
 
 export const isMaintenanceMode = cache(async (): Promise<boolean> => {

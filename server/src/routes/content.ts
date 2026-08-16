@@ -9,10 +9,15 @@ import { logActivity } from "../lib/activity";
 import { triggerRevalidation } from "../lib/revalidate";
 import type { Model } from "mongoose";
 
-const router = Router();
+/* ------------------------------------------------------------------ */
+/*  IMPORTANT — public and admin routes are SEPARATE routers.          */
+/*  Express matches handlers in definition order, so mixing them in    */
+/*  one router lets the public GET handlers shadow the authenticated    */
+/*  admin ones (which silently exposed admin endpoints).               */
+/* ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------ */
-/*  Public reads — published content only                              */
+/*  Public reads — published content only, no authentication           */
 /* ------------------------------------------------------------------ */
 
 const listQuerySchema = z.object({
@@ -26,7 +31,9 @@ const listQuerySchema = z.object({
   category: z.string().optional(),
 });
 
-router.get(
+export const publicRouter = Router();
+
+publicRouter.get(
   "/:key",
   validateQuery(listQuerySchema),
   asyncHandler(async (req, res) => {
@@ -67,7 +74,7 @@ router.get(
   })
 );
 
-router.get(
+publicRouter.get(
   "/:key/:slug",
   asyncHandler(async (req, res) => {
     const { key, slug } = req.params as { key: string; slug: string };
@@ -86,7 +93,7 @@ router.get(
 );
 
 /* ------------------------------------------------------------------ */
-/*  Admin CRUD                                                         */
+/*  Admin CRUD — every route requires authentication + permission     */
 /* ------------------------------------------------------------------ */
 
 /** Loose but meaningful validation for every registry collection. */
@@ -111,7 +118,6 @@ const adminListQuerySchema = listQuerySchema.extend({
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
 });
 
-const idParamsSchema = z.object({ id: z.string().min(1) });
 const reorderSchema = z.object({ order: z.array(z.string()).min(1) });
 
 function buildSlug(body: Record<string, unknown>, existing?: { slug: string }): string {
@@ -121,9 +127,12 @@ function buildSlug(body: Record<string, unknown>, existing?: { slug: string }): 
   return slugify(String(source));
 }
 
-router.get(
+export const adminRouter = Router();
+
+adminRouter.use(requireAuth);
+
+adminRouter.get(
   "/:key",
-  requireAuth,
   requirePermission("content:read"),
   validateQuery(adminListQuerySchema),
   asyncHandler(async (req, res) => {
@@ -158,9 +167,8 @@ router.get(
   })
 );
 
-router.post(
+adminRouter.post(
   "/:key",
-  requireAuth,
   requirePermission("content:write"),
   validateBody(collectionSchema("base").partial()),
   asyncHandler(async (req, res) => {
@@ -179,9 +187,8 @@ router.post(
   })
 );
 
-router.get(
+adminRouter.get(
   "/:key/:id",
-  requireAuth,
   requirePermission("content:read"),
   asyncHandler(async (req, res) => {
     const { key, id } = req.params as { key: string; id: string };
@@ -194,9 +201,30 @@ router.get(
   })
 );
 
-router.patch(
+adminRouter.patch(
+  "/:key/reorder",
+  requirePermission("content:write"),
+  validateBody(reorderSchema),
+  asyncHandler(async (req, res) => {
+    const { key } = req.params as { key: string };
+    const reg = getRegistry(key);
+    if (!reg) throw ApiError.notFound();
+
+    const model = reg.model as Model<any>;
+    const ids = (req.body as { order: string[] }).order;
+
+    await Promise.all(
+      ids.map((id, index) => model.updateOne({ _id: id }, { $set: { order: index } }))
+    );
+
+    await logActivity(req as AuthedRequest, `Reordered ${reg.label}s`, reg.label);
+    await triggerRevalidation([reg.tag]);
+    ok(res, { reordered: ids.length });
+  })
+);
+
+adminRouter.patch(
   "/:key/:id",
-  requireAuth,
   requirePermission("content:write"),
   validateBody(collectionSchema("base").partial()),
   asyncHandler(async (req, res) => {
@@ -223,9 +251,8 @@ router.patch(
   })
 );
 
-router.delete(
+adminRouter.delete(
   "/:key/:id",
-  requireAuth,
   requirePermission("content:write"),
   asyncHandler(async (req, res) => {
     const { key, id } = req.params as { key: string; id: string };
@@ -242,9 +269,8 @@ router.delete(
   })
 );
 
-router.post(
+adminRouter.post(
   "/:key/:id/duplicate",
-  requireAuth,
   requirePermission("content:write"),
   asyncHandler(async (req, res) => {
     const { key, id } = req.params as { key: string; id: string };
@@ -266,31 +292,9 @@ router.post(
 
     const doc = await model.create(copy);
     await logActivity(req as AuthedRequest, `Duplicated ${reg.label}`, reg.label, doc._id, { from: id });
+    await triggerRevalidation([reg.tag]);
     ok(res, doc.toJSON(), undefined, 201);
   })
 );
 
-router.patch(
-  "/:key/reorder",
-  requireAuth,
-  requirePermission("content:write"),
-  validateBody(reorderSchema),
-  asyncHandler(async (req, res) => {
-    const { key } = req.params as { key: string };
-    const reg = getRegistry(key);
-    if (!reg) throw ApiError.notFound();
-
-    const model = reg.model as Model<any>;
-    const ids = (req.body as { order: string[] }).order;
-
-    await Promise.all(
-      ids.map((id, index) => model.updateOne({ _id: id }, { $set: { order: index } }))
-    );
-
-    await logActivity(req as AuthedRequest, `Reordered ${reg.label}s`, reg.label);
-    await triggerRevalidation([reg.tag]);
-    ok(res, { reordered: ids.length });
-  })
-);
-
-export default router;
+export default adminRouter;

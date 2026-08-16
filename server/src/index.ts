@@ -1,9 +1,10 @@
 import { createApp } from "./app";
-import { env } from "./config/env";
+import { assertSecureEnv, env } from "./config/env";
 import { connectDb } from "./db/connect";
 import { logger } from "./lib/logger";
 
 async function main() {
+  assertSecureEnv();
   await connectDb();
 
   const app = createApp();

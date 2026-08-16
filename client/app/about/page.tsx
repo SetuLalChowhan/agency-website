@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getBootstrap } from "@/lib/cms";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { RevealImage } from "@/components/ui/RevealImage";
@@ -36,7 +37,8 @@ const values = [
 ];
 
 export default async function AboutPage() {
-  const { data: bootstrap } = await getBootstrap();
+  const { data: bootstrap, fromCms } = await getBootstrap();
+  if (!fromCms) return <CmsUnavailable />;
   const statsSection = bootstrap.homepage?.sections?.find((s) => s.type === "stats");
   const ctaSection = bootstrap.homepage?.sections?.find((s) => s.type === "cta");
 

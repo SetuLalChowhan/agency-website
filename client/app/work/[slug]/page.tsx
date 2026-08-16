@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { getProject as getCmsProject, getProjects } from "@/lib/cms";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { RevealImage } from "@/components/ui/RevealImage";
 import { Reveal } from "@/components/ui/Reveal";
 import { FinalCTA } from "@/components/home/FinalCTA";
@@ -16,7 +17,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const project = await getCmsProject(slug);
+  const { data: project } = await getCmsProject(slug);
   if (!project) return {};
   return {
     title: `${project.title} — ${project.category}`,
@@ -32,10 +33,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProjectPage({ params }: Props) {
   const { slug } = await params;
-  const project = await getCmsProject(slug);
+  const [projectRes, listRes] = await Promise.all([getCmsProject(slug), getProjects()]);
+  if (!projectRes.fromCms || !listRes.fromCms) return <CmsUnavailable />;
+  const project = projectRes.data;
   if (!project) notFound();
 
-  const { data: projects } = await getProjects();
+  const projects = listRes.data;
   const index = projects.findIndex((p) => p.slug === slug);
   const next = projects[(index + 1) % projects.length] ?? projects[0];
 

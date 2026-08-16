@@ -3,26 +3,29 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { testimonials as fallbackTestimonials, type Testimonial } from "@/lib/data/testimonials";
+import type { Testimonial } from "@/lib/cms";
 import { EASE } from "@/lib/animations";
 import { Reveal } from "@/components/ui/Reveal";
 
 export function Testimonials({ items, eyebrow }: { items?: Testimonial[]; eyebrow?: string }) {
-  const testimonials = items && items.length > 0 ? items : fallbackTestimonials;
+  const testimonials = items ?? [];
   const [[index, dir], setIndex] = useState<[number, number]>([0, 0]);
   const [paused, setPaused] = useState(false);
   const reduced = useReducedMotion();
 
   const paginate = useCallback((d: number) => {
-    setIndex(([i]) => [(i + d + testimonials.length) % testimonials.length, d]);
+    setIndex(([i]) => {
+      if (testimonials.length === 0) return [0, d];
+      return [(i + d + testimonials.length) % testimonials.length, d];
+    });
   }, [testimonials.length]);
 
   // Autoplay
   useEffect(() => {
-    if (paused || reduced) return;
+    if (paused || reduced || testimonials.length === 0) return;
     const t = window.setInterval(() => paginate(1), 9000);
     return () => window.clearInterval(t);
-  }, [paused, reduced, paginate, index]);
+  }, [paused, reduced, paginate, index, testimonials.length]);
 
   // Keyboard
   useEffect(() => {
@@ -34,7 +37,9 @@ export function Testimonials({ items, eyebrow }: { items?: Testimonial[]; eyebro
     return () => window.removeEventListener("keydown", onKey);
   }, [paginate]);
 
-  const t = testimonials[index];
+  if (testimonials.length === 0) return null;
+
+  const t = testimonials[index % testimonials.length];
   const initials = t.name
     .split(" ")
     .map((n) => n[0])

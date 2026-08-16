@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getBootstrap } from "@/lib/cms";
-import { site as fallbackSite } from "@/lib/data/site";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { ContactForm } from "@/components/site/ContactForm";
@@ -14,12 +14,13 @@ export const metadata: Metadata = {
 };
 
 export default async function ContactPage() {
-  const { data } = await getBootstrap();
+  const { data, fromCms } = await getBootstrap();
+  if (!fromCms) return <CmsUnavailable />;
   const settings = data.settings;
 
-  const email = settings?.email || fallbackSite.email;
-  const location = settings?.location || fallbackSite.location;
-  const socials = settings?.socials && settings.socials.length > 0 ? settings.socials : fallbackSite.socials;
+  const email = settings?.email ?? "";
+  const location = settings?.location ?? "";
+  const socials = settings?.socials ?? [];
 
   return (
     <>

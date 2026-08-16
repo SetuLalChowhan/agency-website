@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? process.env.PUBLIC_API_URL ?? "http://localhost:4000";
+const API =
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "development" ? "http://localhost:4000" : "");
 
 /**
  * POST /api/contact
@@ -28,6 +31,13 @@ export async function POST(request: Request) {
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "That email address doesn't look right." }, { status: 400 });
+  }
+
+  if (!API) {
+    return NextResponse.json(
+      { error: "The contact form is not configured (missing API URL)." },
+      { status: 503 }
+    );
   }
 
   try {

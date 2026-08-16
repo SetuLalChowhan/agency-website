@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getProjects } from "@/lib/cms";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { WorkList } from "@/components/projects/WorkList";
@@ -13,7 +14,8 @@ export const metadata: Metadata = {
 };
 
 export default async function WorkPage() {
-  const { data: projects } = await getProjects();
+  const { data: projects, fromCms } = await getProjects();
+  if (!fromCms) return <CmsUnavailable />;
 
   return (
     <>

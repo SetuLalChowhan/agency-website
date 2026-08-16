@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getServices, getProcessSteps } from "@/lib/cms";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { ServicesSection } from "@/components/home/ServicesSection";
@@ -35,8 +36,9 @@ const engagements = [
 const tech = ["Next.js", "React", "TypeScript", "GSAP", "Tailwind", "Node.js", "Postgres", "Vercel", "Sanity", "OpenAI"];
 
 export default async function ServicesPage() {
-  const { data: services } = await getServices();
-  const processSteps = await getProcessSteps();
+  const { data: services, fromCms } = await getServices();
+  const { data: processSteps, fromCms: processOk } = await getProcessSteps();
+  if (!fromCms || !processOk) return <CmsUnavailable />;
 
   return (
     <>

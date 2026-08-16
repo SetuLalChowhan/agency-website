@@ -9,7 +9,7 @@ import { errorHandler, notFoundHandler } from "./middleware/error";
 import { ApiError } from "./lib/errors";
 
 import authRoutes from "./routes/auth";
-import contentRoutes from "./routes/content";
+import contentRoutes, { publicRouter as publicContentRoutes } from "./routes/content";
 import singletonRoutes from "./routes/singletons";
 import siteRoutes from "./routes/site";
 import leadsRoutes from "./routes/leads";
@@ -94,7 +94,7 @@ export function createApp() {
   app.use("/api/v1/admin/diagnostics", diagnosticsRoutes);
 
   // Generic public reads — registered last so it never shadows specific mounts.
-  app.use("/api/v1", contentRoutes); // /api/v1/:collection and /:collection/:slug
+  app.use("/api/v1", publicContentRoutes); // /api/v1/:collection and /:collection/:slug
 
   app.get("/", (_req, res) => {
     res.json({ success: true, data: { name: "KERN CMS API", version: "1.0.0" } });

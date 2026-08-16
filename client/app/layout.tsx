@@ -3,7 +3,8 @@ import Script from "next/script";
 import { IBM_Plex_Mono, Instrument_Serif, Inter, Inter_Tight } from "next/font/google";
 import "./globals.css";
 import { site as fallbackSite } from "@/lib/data/site";
-import { getBootstrap, getSiteUrl } from "@/lib/cms";
+import { getBootstrap } from "@/lib/cms";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { themeToCssVars } from "@/lib/theme";
 import { ThemeProvider } from "@/components/theme";
 import { SiteShell } from "@/components/layout/SiteShell";
@@ -86,7 +87,23 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const { data } = await getBootstrap();
+  const { data, fromCms } = await getBootstrap();
+
+  // The CMS is the single source of truth — if it is unreachable, show an
+  // explicit state instead of silently serving stale bundled content.
+  if (!fromCms) {
+    return (
+      <html
+        lang="en"
+        suppressHydrationWarning
+        className={`${interTight.variable} ${inter.variable} ${plexMono.variable} ${instrumentSerif.variable}`}
+      >
+        <body suppressHydrationWarning className="bg-ink">
+          <CmsUnavailable full />
+        </body>
+      </html>
+    );
+  }
 
   const settings = data.settings;
   const maintenance = settings?.maintenance?.enabled === true;

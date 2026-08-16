@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getArticles } from "@/lib/cms";
+import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Reveal } from "@/components/ui/Reveal";
 import { InsightsTeaser } from "@/components/home/InsightsTeaser";
@@ -13,7 +14,8 @@ export const metadata: Metadata = {
 };
 
 export default async function InsightsPage() {
-  const { data: articles } = await getArticles();
+  const { data: articles, fromCms } = await getArticles();
+  if (!fromCms) return <CmsUnavailable />;
 
   return (
     <>

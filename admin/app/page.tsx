@@ -64,7 +64,7 @@ export default function DashboardPage() {
             <Link key={tile.label} href={tile.href} className="group border border-line bg-ink-2/60 p-5 transition-colors hover:border-acid/50">
               <div className="flex items-center justify-between">
                 <Icon className="h-4 w-4 text-stone transition-colors group-hover:text-acid" />
-                <Badge value={tile.label === "New leads" && tile.value > 0} className={tile.label === "New leads" ? "" : "hidden"} />
+                {tile.label === "New leads" && tile.value > 0 && <Badge value="NEW" />}
               </div>
               <p className="display mt-6 text-4xl text-paper">{tile.value}</p>
               <p className="meta-label mt-2 text-stone">{tile.label}</p>

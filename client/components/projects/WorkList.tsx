@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
-import type { Project } from "@/lib/data/projects";
+import type { Project } from "@/lib/cms";
 import { HoverPreview } from "@/components/ui/HoverPreview";
 import { cn } from "@/lib/utils/cn";
 
@@ -18,12 +18,14 @@ export function WorkList({
   className?: string;
 }) {
   const [hovered, setHovered] = useState<string | null>(null);
-  const [previewSlug, setPreviewSlug] = useState(projects[0].slug);
+  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
 
   const handleHover = (slug: string | null) => {
     if (slug) setPreviewSlug(slug);
     setHovered(slug);
   };
+
+  if (projects.length === 0) return null;
 
   const preview = projects.find((p) => p.slug === previewSlug) ?? projects[0];
 
