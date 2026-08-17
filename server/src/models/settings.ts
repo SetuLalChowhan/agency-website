@@ -242,6 +242,8 @@ const pageSchema = new Schema(
     publishedAt: { type: Date },
     seo: { type: Schema.Types.Mixed, default: {} },
     order: { type: Number, default: 0 },
+    showInNav: { type: Boolean, default: false },
+    showInFooter: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

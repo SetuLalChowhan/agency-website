@@ -1,17 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import {
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
+  ChevronDown,
   Copy,
   ExternalLink,
   Layers,
   Layout,
+  Menu,
   Pencil,
   Plus,
+  Save,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -61,6 +62,8 @@ type PageDoc = {
   slug: string;
   description?: string;
   status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  showInNav?: boolean;
+  showInFooter?: boolean;
   sections: PageSection[];
   seo?: {
     title?: string;
@@ -234,8 +237,8 @@ export default function UnifiedPageSectionsBuilder() {
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
-  // Active tab ("home" or page._id or page.slug)
-  const [activeTab, setActiveTab] = useState<string>("home");
+  // Active page identifier ("home" or page._id)
+  const [selectedKey, setSelectedKey] = useState<string>("home");
 
   // Home singleton data
   const homeSingleton = useSingleton<any>("homepage");
@@ -244,7 +247,7 @@ export default function UnifiedPageSectionsBuilder() {
   const [pages, setPages] = useState<PageDoc[]>([]);
   const [loadingPages, setLoadingPages] = useState(true);
 
-  // Selected custom page (when activeTab !== "home")
+  // Selected custom page
   const [selectedPage, setSelectedPage] = useState<PageDoc | null>(null);
   const [pageSaving, setPageSaving] = useState(false);
   const [pageSaved, setPageSaved] = useState(false);
@@ -259,6 +262,8 @@ export default function UnifiedPageSectionsBuilder() {
   const [newPageTitle, setNewPageTitle] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
   const [newPageDesc, setNewPageDesc] = useState("");
+  const [newShowInNav, setNewShowInNav] = useState(false);
+  const [newShowInFooter, setNewShowInFooter] = useState(true);
   const [savingNewPage, setSavingNewPage] = useState(false);
 
   const loadPages = useCallback(async () => {
@@ -277,18 +282,17 @@ export default function UnifiedPageSectionsBuilder() {
     loadPages();
   }, [loadPages]);
 
-  // Sync selected custom page when activeTab changes
+  // Sync selected custom page when selectedKey changes
   useEffect(() => {
-    if (activeTab === "home") {
+    if (selectedKey === "home") {
       setSelectedPage(null);
     } else {
-      const p = pages.find((page) => page._id === activeTab || page.slug === activeTab);
+      const p = pages.find((page) => page._id === selectedKey || page.slug === selectedKey);
       if (p) setSelectedPage(p);
     }
-  }, [activeTab, pages]);
+  }, [selectedKey, pages]);
 
-  // Active sections based on tab
-  const isHome = activeTab === "home";
+  const isHome = selectedKey === "home";
   const rawSections: PageSection[] = isHome
     ? (homeSingleton.data?.sections ?? [])
     : (selectedPage?.sections ?? []);
@@ -375,6 +379,8 @@ export default function UnifiedPageSectionsBuilder() {
             slug: selectedPage.slug,
             description: selectedPage.description,
             status: selectedPage.status,
+            showInNav: selectedPage.showInNav ?? false,
+            showInFooter: selectedPage.showInFooter ?? false,
             seo: selectedPage.seo,
             sections,
           },
@@ -410,6 +416,8 @@ export default function UnifiedPageSectionsBuilder() {
           slug,
           description: newPageDesc.trim(),
           status: "PUBLISHED",
+          showInNav: newShowInNav,
+          showInFooter: newShowInFooter,
           sections: [
             {
               type: "hero",
@@ -425,14 +433,14 @@ export default function UnifiedPageSectionsBuilder() {
           ],
         },
       });
-      toast("New page created and added to tabs ✓");
+      toast("New page created and selected ✓");
       setCreatingPage(false);
       setNewPageTitle("");
       setNewPageSlug("");
       setNewPageDesc("");
       await loadPages();
       if (res.data?._id) {
-        setActiveTab(res.data._id);
+        setSelectedKey(res.data._id);
       }
     } catch (err) {
       toast(err instanceof ApiError ? err.message : "Failed to create page", "error");
@@ -442,83 +450,86 @@ export default function UnifiedPageSectionsBuilder() {
   };
 
   if (homeSingleton.loading || loadingPages) {
-    return <Spinner label="Loading page sections hub..." />;
+    return <Spinner label="Loading page sections builder..." />;
   }
 
-  const activeLiveUrl = isHome
-    ? "/"
-    : `/${selectedPage?.slug ?? ""}`;
+  const activeSlug = isHome ? "" : selectedPage?.slug ?? "";
+  const publicBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const activePreviewUrl = isHome
+    ? `${publicBaseUrl}/`
+    : `${publicBaseUrl}/${activeSlug}`;
 
   return (
-    <div className="flex flex-col gap-6 pb-16">
-      {/* Top Header */}
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="display text-3xl text-paper">Page Sections & Visual Builder</h1>
-          <p className="mt-1 text-sm text-smoke">
-            Manage, customize, and reorder dynamic sections for every website page from one unified hub.
-          </p>
+    <div className="flex flex-col gap-6 pb-20">
+      {/* Top Header & Page Selector */}
+      <header className="flex flex-wrap items-center justify-between gap-4 rounded border border-line bg-ink p-5 shadow-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-col">
+            <span className="meta-label text-stone text-[10px] uppercase tracking-wider">Active Page</span>
+            <div className="relative mt-1">
+              <select
+                value={selectedKey}
+                onChange={(e) => setSelectedKey(e.target.value)}
+                aria-label="Select website page to edit"
+                className="h-10 min-w-[260px] appearance-none rounded border border-line bg-ink-2 pl-3.5 pr-10 text-sm font-semibold text-paper focus:border-acid focus:outline-none"
+              >
+                <optgroup label="Core Website Pages">
+                  <option value="home">Home Page (/)</option>
+                  {pages
+                    .filter((p) => ["about", "services", "work", "insights"].includes(p.slug))
+                    .map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.title} (/{p.slug})
+                      </option>
+                    ))}
+                </optgroup>
+                {pages.filter((p) => !["about", "services", "work", "insights"].includes(p.slug)).length > 0 && (
+                  <optgroup label="Custom Dynamic Pages">
+                    {pages
+                      .filter((p) => !["about", "services", "work", "insights"].includes(p.slug))
+                      .map((p) => (
+                        <option key={p._id} value={p._id}>
+                          {p.title} (/{p.slug})
+                        </option>
+                      ))}
+                  </optgroup>
+                )}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-4">
+            <Button variant="outline" size="sm" onClick={() => setCreatingPage(true)}>
+              <Plus className="h-3.5 w-3.5 text-acid" /> Add New Page
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.open(activePreviewUrl || `/${activeSlug}`, "_blank")}
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> View Live Page
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2.5">
-          <Button variant="outline" onClick={() => window.open(activeLiveUrl, "_blank")}>
-            <ExternalLink className="h-3.5 w-3.5" /> View Live Page
-          </Button>
+
+        <div className="flex items-center gap-3">
           <Button
             variant="primary"
             onClick={handleSavePage}
             loading={isHome ? homeSingleton.saving : pageSaving}
           >
-            {(isHome ? homeSingleton.saved : pageSaved) ? "Saved ✓" : `Save ${isHome ? "Homepage" : selectedPage?.title ?? "Page"}`}
+            <Save className="h-4 w-4" />
+            {(isHome ? homeSingleton.saved : pageSaved)
+              ? "Saved to MongoDB ✓"
+              : `Save ${isHome ? "Homepage" : selectedPage?.title ?? "Page"}`}
           </Button>
         </div>
       </header>
 
-      {/* Pages Tabs Navigation Bar */}
-      <div className="flex items-center justify-between border-b border-line bg-ink pb-px overflow-x-auto">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab("home")}
-            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${
-              activeTab === "home"
-                ? "border-acid text-paper bg-ink-2"
-                : "border-transparent text-stone hover:text-paper"
-            }`}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-acid" />
-            Home Page (/)
-          </button>
-
-          {pages.map((p) => (
-            <button
-              key={p._id}
-              type="button"
-              onClick={() => setActiveTab(p._id)}
-              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-colors whitespace-nowrap ${
-                activeTab === p._id || activeTab === p.slug
-                  ? "border-acid text-paper bg-ink-2"
-                  : "border-transparent text-stone hover:text-paper"
-              }`}
-            >
-              <span className="font-mono text-[10px] text-stone">/{p.slug}</span>
-              <span>{p.title}</span>
-            </button>
-          ))}
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCreatingPage(true)}
-          className="my-1.5 mr-2 flex-none"
-        >
-          <Plus className="h-3.5 w-3.5 text-acid" /> Add Page
-        </Button>
-      </div>
-
-      {/* Active Page Meta Bar (For custom pages) */}
+      {/* Page Configuration & Placement Controls (For custom pages) */}
       {!isHome && selectedPage && (
-        <Card title="Page Configuration & SEO">
+        <Card title={`Page Details & Placement: ${selectedPage.title}`}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Field label="Page Title">
               <Input
@@ -543,12 +554,30 @@ export default function UnifiedPageSectionsBuilder() {
                   setSelectedPage({ ...selectedPage, status: e.target.value as any })
                 }
               >
-                <option value="PUBLISHED">Published</option>
-                <option value="DRAFT">Draft</option>
+                <option value="PUBLISHED">Published (Live)</option>
+                <option value="DRAFT">Draft (Hidden)</option>
                 <option value="ARCHIVED">Archived</option>
               </Select>
             </Field>
-            <Field label="SEO Title (Optional)" className="md:col-span-1">
+          </div>
+
+          {/* Navigation & Footer Placement Checkboxes */}
+          <div className="mt-4 flex flex-wrap items-center gap-6 border-t border-line pt-4">
+            <Checkbox
+              checked={selectedPage.showInNav ?? false}
+              onChange={(checked) => setSelectedPage({ ...selectedPage, showInNav: checked })}
+              label={<span className="text-xs font-medium text-paper">Show link in Header Navigation Menu</span>}
+            />
+            <Checkbox
+              checked={selectedPage.showInFooter ?? true}
+              onChange={(checked) => setSelectedPage({ ...selectedPage, showInFooter: checked })}
+              label={<span className="text-xs font-medium text-paper">Show link in Footer Navigation Links</span>}
+            />
+          </div>
+
+          {/* SEO Metadata */}
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 border-t border-line pt-4">
+            <Field label="SEO Title (Optional)">
               <Input
                 value={selectedPage.seo?.title ?? ""}
                 onChange={(e) =>
@@ -560,7 +589,7 @@ export default function UnifiedPageSectionsBuilder() {
                 placeholder={`${selectedPage.title} — KERN®`}
               />
             </Field>
-            <Field label="Meta Description" className="md:col-span-2">
+            <Field label="Meta Description">
               <Input
                 value={selectedPage.seo?.description ?? selectedPage.description ?? ""}
                 onChange={(e) =>
@@ -570,7 +599,7 @@ export default function UnifiedPageSectionsBuilder() {
                     seo: { ...selectedPage.seo, description: e.target.value },
                   })
                 }
-                placeholder="Meta description for search results..."
+                placeholder="Meta description for search engines..."
               />
             </Field>
           </div>
@@ -589,7 +618,7 @@ export default function UnifiedPageSectionsBuilder() {
         {sections.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
             <Layers className="h-10 w-10 text-stone" />
-            <h3 className="mt-4 text-base font-medium text-paper">No sections added yet</h3>
+            <h3 className="mt-4 text-base font-medium text-paper">No sections in this page</h3>
             <p className="mt-1 max-w-sm text-xs text-smoke">
               Click &quot;Add Section&quot; to choose from Hero, Services, Team, FAQs, Split Media, and CTA templates.
             </p>
@@ -900,7 +929,19 @@ export default function UnifiedPageSectionsBuilder() {
               rows={3}
             />
           </Field>
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="flex flex-col gap-2 border-t border-line pt-3">
+            <Checkbox
+              checked={newShowInNav}
+              onChange={setNewShowInNav}
+              label={<span className="text-xs text-paper">Show link in Header Navigation Menu</span>}
+            />
+            <Checkbox
+              checked={newShowInFooter}
+              onChange={setNewShowInFooter}
+              label={<span className="text-xs text-paper">Show link in Footer Navigation Links</span>}
+            />
+          </div>
+          <div className="mt-4 flex justify-end gap-2 border-t border-line pt-3">
             <Button variant="outline" type="button" onClick={() => setCreatingPage(false)}>
               Cancel
             </Button>

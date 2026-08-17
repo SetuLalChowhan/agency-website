@@ -12,6 +12,9 @@ import {
 } from "@/lib/cms";
 import { PageSectionRenderer } from "@/components/sections/PageSectionRenderer";
 
+export const dynamic = "force-dynamic";
+export const dynamicParams = true;
+
 type DynamicPageProps = {
   params: Promise<{ slug: string[] }>;
 };

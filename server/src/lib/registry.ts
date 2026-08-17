@@ -141,7 +141,7 @@ export const contentRegistry: RegistryConfig[] = [
     key: "pages",
     label: "Page",
     model: Page as unknown as Model<unknown>,
-    publicFields: f(["slug", "title", "description", "sections", "seo", "order"]),
+    publicFields: f(["slug", "title", "description", "sections", "seo", "order", "showInNav", "showInFooter"]),
     searchFields: ["title", "slug", "description"],
     sortable: ["order", "createdAt", "updatedAt", "title"],
     public: true,
