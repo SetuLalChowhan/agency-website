@@ -454,10 +454,14 @@ export default function UnifiedPageSectionsBuilder() {
   }
 
   const activeSlug = isHome ? "" : selectedPage?.slug ?? "";
-  const publicBaseUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
-  const activePreviewUrl = isHome
-    ? `${publicBaseUrl}/`
-    : `${publicBaseUrl}/${activeSlug}`;
+  const publicBaseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    (typeof window !== "undefined" && window.location.hostname.includes("vercel.app")
+      ? "https://agency-website-etch.vercel.app"
+      : "http://localhost:3000");
+
+  const cleanBase = publicBaseUrl.replace(/\/+$/, "");
+  const activePreviewUrl = activeSlug ? `${cleanBase}/${activeSlug}` : `${cleanBase}/`;
 
   return (
     <div className="flex flex-col gap-6 pb-20">

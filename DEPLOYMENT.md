@@ -47,8 +47,9 @@ This project consists of 3 applications ready for deployment on **Vercel**:
 4. Configure **Environment Variables**:
    | Variable | Value | Description |
    | :--- | :--- | :--- |
-   | `NEXT_PUBLIC_API_URL` | `https://your-api.vercel.app` | The backend API URL from Step 1 |
-5. Click **Deploy**. Note your deployment URL (e.g. `https://your-admin.vercel.app`).
+   | `NEXT_PUBLIC_API_URL` | `https://agency-website-five-rho.vercel.app` | The backend API URL from Step 1 |
+   | `NEXT_PUBLIC_SITE_URL` | `https://agency-website-etch.vercel.app` | The client website URL for live preview links |
+5. Click **Deploy**. Note your deployment URL (e.g. `https://agency-website-admin.vercel.app`).
 
 ---
 
