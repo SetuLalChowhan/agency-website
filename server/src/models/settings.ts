@@ -207,15 +207,26 @@ const seoDefaultsSchema = new Schema(
 );
 
 /* ------------------------------------------------------------------ */
-/*  Custom pages (static pages with structured sections)               */
+/*  Custom pages (dynamic page builder with structured sections)       */
 /* ------------------------------------------------------------------ */
 const pageSectionSchema = new Schema(
   {
-    type: { type: String, default: "richtext" },
-    heading: String,
-    body: String,
-    image: String,
+    type: { type: String, required: true }, // hero | text | split | features | services | portfolio | team | testimonials | insights | stats | faq | cta | contact | marquee | custom
+    key: { type: String, required: true },
+    label: { type: String, default: "" },
+    enabled: { type: Boolean, default: true },
+    order: { type: Number, default: 0 },
+    heading: { type: String, default: "" },
+    subheading: { type: String, default: "" },
+    body: { type: String, default: "" },
+    eyebrow: { type: String, default: "" },
+    image: { type: String, default: "" },
+    cta: { type: ctaSchema, default: {} },
+    secondaryCta: { type: ctaSchema, default: {} },
+    stats: { type: [sectionItemSchema], default: [] },
     items: { type: [sectionItemSchema], default: [] },
+    clients: { type: [sectionItemSchema], default: [] },
+    marquee: { type: [String], default: [] },
     meta: { type: Schema.Types.Mixed, default: {} },
   },
   { _id: true }

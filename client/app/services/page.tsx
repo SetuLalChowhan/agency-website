@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getServices, getProcessSteps } from "@/lib/cms";
+import { getServices, getProcessSteps, getFAQs } from "@/lib/cms";
 import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Reveal } from "@/components/ui/Reveal";
@@ -7,6 +7,7 @@ import { ServicesSection } from "@/components/home/ServicesSection";
 import { ProcessSection } from "@/components/home/ProcessSection";
 import { Marquee } from "@/components/home/Marquee";
 import { FinalCTA } from "@/components/home/FinalCTA";
+import { PageSectionRenderer } from "@/components/sections/PageSectionRenderer";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -38,6 +39,7 @@ const tech = ["Next.js", "React", "TypeScript", "GSAP", "Tailwind", "Node.js", "
 export default async function ServicesPage() {
   const { data: services, fromCms } = await getServices();
   const { data: processSteps, fromCms: processOk } = await getProcessSteps();
+  const { data: faqs } = await getFAQs();
   if (!fromCms || !processOk) return <CmsUnavailable />;
 
   return (
@@ -75,6 +77,25 @@ export default async function ServicesPage() {
       </section>
 
       <ProcessSection steps={processSteps} />
+
+      {/* Live FAQs Section from CMS */}
+      {faqs && faqs.length > 0 && (
+        <PageSectionRenderer
+          sections={[
+            {
+              type: "faqs",
+              key: "services-faqs",
+              label: "FAQs",
+              enabled: true,
+              order: 0,
+              heading: "Frequently Asked Questions",
+              eyebrow: "05 / Clarity",
+              body: "Everything you need to know about working with our team.",
+            },
+          ]}
+          faqs={faqs}
+        />
+      )}
 
       {/* Tech marquee */}
       <section className="border-t hairline-d py-6" aria-label="Technologies we ship with">

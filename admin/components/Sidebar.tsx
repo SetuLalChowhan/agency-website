@@ -6,6 +6,7 @@ import {
   Activity,
   ArrowUpRight,
   BookOpen,
+  FileText,
   FolderKanban,
   Gauge,
   Home,
@@ -56,7 +57,7 @@ const GROUPS: Array<{ label: string; items: Array<{ href: string; label: string;
       { href: "/content/blog", label: "Blog posts", icon: Newspaper },
       { href: "/content/blog-categories", label: "Blog categories", icon: Tags },
       { href: "/content/blog-tags", label: "Blog tags", icon: Tags },
-      { href: "/content/pages", label: "Pages", icon: FileTextIcon },
+      { href: "/content/pages", label: "Pages", icon: FileText },
     ],
   },
   {

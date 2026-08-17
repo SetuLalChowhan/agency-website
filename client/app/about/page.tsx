@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getBootstrap } from "@/lib/cms";
+import { getBootstrap, getTeam } from "@/lib/cms";
 import { CmsUnavailable } from "@/components/site/CmsUnavailable";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { Reveal } from "@/components/ui/Reveal";
@@ -38,6 +38,7 @@ const values = [
 
 export default async function AboutPage() {
   const { data: bootstrap, fromCms } = await getBootstrap();
+  const { data: teamMembers } = await getTeam();
   if (!fromCms) return <CmsUnavailable />;
   const statsSection = bootstrap.homepage?.sections?.find((s) => s.type === "stats");
   const ctaSection = bootstrap.homepage?.sections?.find((s) => s.type === "cta");
@@ -107,30 +108,38 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      {/* Team */}
-      <section className="border-t hairline-d px-5 py-24 md:px-10 md:py-36">
-        <div className="mx-auto grid max-w-[1920px] gap-14 md:grid-cols-12 md:gap-10">
-          <div className="md:col-span-5">
-            <Parallax speed={0.07}>
-              <RevealImage
-                src="/images/studio/studio-2.svg"
-                alt="KERN studio wall — prints, sketches and shipping notes"
-                className="aspect-[4/3] w-full"
-                sizes="(min-width: 768px) 40vw, 100vw"
-              />
-            </Parallax>
-          </div>
-          <div className="flex flex-col justify-center md:col-span-6 md:col-start-7">
-            <p className="meta-label text-stone">The people</p>
-            <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-paper/85">
-              Fourteen people across strategy, design, engineering and AI. We hire for taste and
-              train for craft — and we&apos;ve worked together long enough that the first draft of
-              most decisions is already shared.
-            </p>
-            <p className="mt-6 max-w-xl text-[17px] leading-relaxed text-paper/85">
-              No account managers between you and the work. When you write to us, you hear from the
-              people who will actually build it.
-            </p>
+      {/* Live Dynamic Team from CMS */}
+      <section className="border-t hairline-d px-5 py-24 md:px-10 md:py-36 bg-ink-2">
+        <div className="mx-auto max-w-[1920px]">
+          <SectionHeader label="The People" index="Studio Team" title="Leadership & Craft" />
+          <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {teamMembers.map((m: any, i: number) => (
+              <Reveal key={m._id || i} delay={i * 0.08}>
+                <div className="flex flex-col gap-4 rounded border hairline-d bg-ink p-6">
+                  <div className="relative aspect-square w-full overflow-hidden rounded bg-ink-3">
+                    <RevealImage
+                      src={m.image || "/images/studio/portrait.svg"}
+                      alt={m.name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="display text-xl text-paper">{m.name}</h3>
+                    <p className="text-xs font-mono text-acid">{m.position}</p>
+                    {m.bio && <p className="mt-2.5 text-xs leading-relaxed text-smoke">{m.bio}</p>}
+                    {m.skills && m.skills.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-1.5">
+                        {m.skills.map((sk: string, j: number) => (
+                          <span key={j} className="rounded border hairline-d bg-ink-2 px-2 py-0.5 font-mono text-[10px] text-stone">
+                            {sk}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Reveal>
+            ))}
           </div>
         </div>
       </section>

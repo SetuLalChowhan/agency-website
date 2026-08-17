@@ -21,6 +21,7 @@ import {
   Footer,
   SeoDefaults,
   HomePage,
+  Page,
 } from "../src/models/settings";
 import { Service, Project, Testimonial, TeamMember, FAQ } from "../src/models/content";
 import { BlogPost, BlogCategory } from "../src/models/blog";
@@ -722,7 +723,128 @@ async function main() {
       faqsCreated++;
     }
   }
-  logger.info(`Seed: FAQ — ${faqsCreated} created`);
+  // Dynamic Custom Pages
+  const DEMO_PAGES = [
+    {
+      title: "Studio Manifesto",
+      slug: "manifesto",
+      description: "Our philosophy on software engineering, visual craft, and deliberate restraint.",
+      status: "PUBLISHED",
+      publishedAt: new Date(),
+      order: 0,
+      seo: {
+        title: "Manifesto — KERN® Digital Studio",
+        description: "Our core principles on building exceptional digital experiences.",
+      },
+      sections: [
+        {
+          type: "hero",
+          key: "manifesto-hero",
+          label: "Hero Section",
+          enabled: true,
+          order: 0,
+          heading: "Craft as a business strategy.",
+          subheading: "In an era of generic templates and bloated abstractions, we choose precision, speed, and point of view.",
+          eyebrow: "Our Manifesto",
+          cta: { label: "Explore Work", href: "/work" },
+          secondaryCta: { label: "Get in touch", href: "/contact" },
+        },
+        {
+          type: "features",
+          key: "manifesto-principles",
+          label: "Core Principles",
+          enabled: true,
+          order: 1,
+          heading: "How we build",
+          eyebrow: "Principles",
+          items: [
+            { index: "01", title: "Obsessive Polish", body: "We notice the 4px micro-details and fix them before anyone asks." },
+            { index: "02", title: "Zero Filler", body: "Every line of code and word of copy must earn its place on screen." },
+            { index: "03", title: "Shared Velocity", body: "Direct collaboration between builders and founders without bureaucratic layers." },
+            { index: "04", title: "Production Grade", body: "Accessibility, sub-second load times, and dynamic CMS synchronization out of the box." },
+          ],
+        },
+        {
+          type: "cta",
+          key: "manifesto-cta",
+          label: "Manifesto CTA",
+          enabled: true,
+          order: 2,
+          heading: "Ready to partner?",
+          eyebrow: "Collaboration",
+          cta: { label: "Start a conversation", href: "/contact" },
+        },
+      ],
+    },
+    {
+      title: "Careers",
+      slug: "careers",
+      description: "Join our dedicated team of designers, engineers, and digital craftsmen.",
+      status: "PUBLISHED",
+      publishedAt: new Date(),
+      order: 1,
+      seo: {
+        title: "Careers — KERN® Studio",
+        description: "Open roles at KERN digital studio.",
+      },
+      sections: [
+        {
+          type: "hero",
+          key: "careers-hero",
+          label: "Careers Hero",
+          enabled: true,
+          order: 0,
+          heading: "Do the best work of your career.",
+          subheading: "We are always looking for obsessive designers, full-stack engineers, and motion specialists.",
+          eyebrow: "Open Roles",
+          cta: { label: "View Team", href: "/about" },
+          secondaryCta: { label: "Contact Us", href: "/contact" },
+        },
+        {
+          type: "team",
+          key: "careers-team",
+          label: "Meet the Team",
+          enabled: true,
+          order: 1,
+          heading: "Meet your future teammates",
+          eyebrow: "The Studio",
+        },
+        {
+          type: "faqs",
+          key: "careers-faqs",
+          label: "Hiring FAQs",
+          enabled: true,
+          order: 2,
+          heading: "Working at KERN",
+          eyebrow: "FAQ",
+          items: [
+            { title: "Is the role remote or in-person?", body: "We operate a hybrid studio with our headquarters in Dhaka and distributed team members worldwide." },
+            { title: "What is the interview process?", body: "A single technical/portfolio conversation followed by a paid 1-week collaborative trial sprint." },
+          ],
+        },
+        {
+          type: "cta",
+          key: "careers-cta",
+          label: "Careers CTA",
+          enabled: true,
+          order: 3,
+          heading: "Don't see your role?",
+          eyebrow: "General Inquiries",
+          cta: { label: "Send your portfolio", href: "/contact" },
+        },
+      ],
+    },
+  ];
+
+  let pagesCreated = 0;
+  for (const p of DEMO_PAGES) {
+    const exists = await Page.findOne({ slug: p.slug });
+    if (!exists) {
+      await Page.create(p);
+      pagesCreated++;
+    }
+  }
+  logger.info(`Seed: Page — ${pagesCreated} created`);
 
   await mongoose.disconnect();
   logger.info("Seed complete");
