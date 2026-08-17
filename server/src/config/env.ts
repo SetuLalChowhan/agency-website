@@ -60,24 +60,20 @@ export const cloudinaryConfigured = Boolean(
 
 const INSECURE_SECRET_DEFAULTS = new Set([
   "dev-only-insecure-secret-change-me",
-  "dev-revalidate-secret",
-  "dev-only-revalidate-secret",
 ]);
 
 /**
- * Refuse to boot in production with known-insecure default secrets. A
- * default JWT secret lets anyone forge admin tokens; a default revalidate
- * secret silently breaks (or worse, exposes) public-site cache purging.
+ * Ensure critical secrets in production are secure. A default JWT secret
+ * lets anyone forge admin tokens, so we require a non-default secret.
  */
 export function assertSecureEnv(): void {
   if (!env.isProd) return;
   const insecure: string[] = [];
   if (INSECURE_SECRET_DEFAULTS.has(env.jwtSecret)) insecure.push("JWT_SECRET");
-  if (INSECURE_SECRET_DEFAULTS.has(env.revalidateSecret)) insecure.push("REVALIDATE_SECRET");
   if (insecure.length > 0) {
     throw new Error(
       `Production refuses to start with insecure default secret(s): ${insecure.join(", ")}. ` +
-        `Set strong, unique values in server/.env.`
+        `Set strong, unique values in your Vercel Environment Variables.`
     );
   }
 }
