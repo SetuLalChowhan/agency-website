@@ -11,25 +11,20 @@ type ThemeContextValue = {
   setTheme: (t: Theme) => void;
 };
 
-const ThemeContext = createContext<ThemeContextValue>({ theme: "system", setTheme: () => {} });
+const ThemeContext = createContext<ThemeContextValue>({ theme: "dark", setTheme: () => {} });
 
 function isTheme(v: string | null): v is Theme {
   return v === "light" || v === "dark" || v === "system";
 }
 
 function getStored(): Theme {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "dark";
   const v = window.localStorage.getItem(STORAGE_KEY);
-  return isTheme(v) ? v : "system";
+  return isTheme(v) ? v : "dark";
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Always start at "system" on both server and client so the SSR HTML matches
-  // the first client render (no hydration mismatch on the toggle buttons). The
-  // inline <script> in the layout already applied the stored theme to
-  // <html data-theme="..."> pre-paint, so there is no flash of the wrong
-  // colors; we just sync React state after mount.
-  const [theme, setThemeState] = useState<Theme>("system");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
   // Apply the chosen theme to <html data-theme="..."> — the light palette in
   // globals.css keys off this attribute.

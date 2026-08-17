@@ -6,8 +6,9 @@ import { CustomCursor } from "@/components/cursor/CustomCursor";
 import { NoiseOverlay } from "@/components/layout/NoiseOverlay";
 import { ScrollProgress } from "@/components/layout/ScrollProgress";
 import { Loader } from "@/components/overlay/Loader";
+import type { CmsSettings } from "@/lib/cms";
 
-export function SiteShell({ children }: { children: ReactNode }) {
+export function SiteShell({ children, settings }: { children: ReactNode; settings?: CmsSettings }) {
   const [cursorActive, setCursorActive] = useState(false);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       {cursorActive && <CustomCursor />}
       <NoiseOverlay />
       <ScrollProgress />
-      <Loader />
+      <Loader settings={settings} />
       {children}
     </LenisProvider>
   );

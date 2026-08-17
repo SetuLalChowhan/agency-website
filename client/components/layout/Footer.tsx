@@ -35,7 +35,18 @@ export function Footer({ nav, settings, footer }: FooterProps) {
   const location = settings?.location || site.location;
   const wordmark = settings?.wordmark ?? site.wordmark;
   const tagline = footer?.description || settings?.tagline || site.tagline;
-  const copyright = footer?.copyright || settings?.legal || site.legal;
+  const rawCopyright = footer?.copyright || settings?.legal || site.legal || "KERN Studio";
+  const year = new Date().getFullYear();
+
+  // Normalize copyright so we never double-render '©', year, or 'All rights reserved'
+  let copyrightText = rawCopyright.trim();
+  if (!/all rights reserved/i.test(copyrightText)) {
+    if (!/^(©|\(c\)|@)/i.test(copyrightText)) {
+      copyrightText = `© ${year} ${copyrightText}. All rights reserved.`;
+    } else {
+      copyrightText = `${copyrightText}. All rights reserved.`;
+    }
+  }
   const founded = settings?.founded ?? site.founded;
 
   const backToTop = () => {
@@ -128,7 +139,7 @@ export function Footer({ nav, settings, footer }: FooterProps) {
 
         {/* Bottom bar */}
         <div className="mt-16 flex flex-col gap-6 border-t hairline-d pb-10 pt-6 md:flex-row md:items-center md:justify-between">
-          <p className="meta-label text-stone">© 2026 {copyright}. All rights reserved.</p>
+          <p className="meta-label text-stone">{copyrightText}</p>
           <p className="meta-label text-smoke">{location}</p>
           <Magnetic className="self-start md:self-auto">
             <button

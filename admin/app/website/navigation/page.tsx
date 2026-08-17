@@ -55,7 +55,7 @@ export default function NavigationPage() {
           <h1 className="display text-3xl text-paper">Navigation</h1>
           <p className="mt-1 text-sm text-smoke">The public header menu — changes appear after save.</p>
         </div>
-        <Button variant="primary" onClick={save} loading={saving}>
+        <Button variant="primary" onClick={() => save(data)} loading={saving}>
           {saved ? "Saved ✓" : "Save navigation"}
         </Button>
       </header>

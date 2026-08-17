@@ -146,7 +146,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           id="kern-site-theme-init"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("kern-site-theme");if(t!=="light"&&t!=="dark")t="system";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="system";}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("kern-site-theme");if(t!=="light"&&t!=="dark")t="dark";document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="dark";}})();`,
           }}
         />
       </head>
@@ -163,7 +163,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </h1>
           </main>
         ) : (
-          <SiteShell>
+          <SiteShell settings={settings}>
             <Navigation
               items={data.navigation?.items}
               cta={data.navigation?.cta}

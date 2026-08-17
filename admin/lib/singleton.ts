@@ -32,11 +32,13 @@ export function useSingleton<T extends Record<string, any>>(key: string) {
       setSaving(true);
       setSaved(false);
       try {
-        await api(`/api/v1/admin/settings/${key}`, { method: "PATCH", body: payload });
+        const res = await api<{ data: T }>(`/api/v1/admin/settings/${key}`, { method: "PATCH", body: payload });
+        if (res && res.data) {
+          setData(res.data);
+        }
         setSaved(true);
         toast("Saved — the public site will refresh shortly");
         setTimeout(() => setSaved(false), 2500);
-        load();
         return true;
       } catch (err) {
         toast(err instanceof ApiError ? err.message : "Save failed", "error");
@@ -45,7 +47,7 @@ export function useSingleton<T extends Record<string, any>>(key: string) {
         setSaving(false);
       }
     },
-    [key, load, toast]
+    [key, toast]
   );
 
   return { data, setData, loading, saving, saved, save, reload: load };

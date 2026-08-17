@@ -86,21 +86,20 @@ router.patch(
     const doc = await singleton(def.model, def.seed);
     const before = doc.toObject();
 
-    // Navigations are fully replaced (items array), others merge shallowly.
-    if (key === "navigation") {
-      const nav = req.body as { items?: unknown[]; cta?: Record<string, unknown> };
-      if (nav.items) doc.items = nav.items;
-      if (nav.cta) doc.cta = nav.cta;
-    } else {
-      Object.assign(doc, req.body);
-    }
-    await doc.save();
+    // Atomic update to ensure nested arrays/subdocs (sections, columns, socials, items) are fully persisted
+    const updated = await def.model.findByIdAndUpdate(
+      doc._id,
+      { $set: req.body },
+      { new: true, runValidators: false }
+    );
 
-    await logActivity(req as AuthedRequest, `Updated ${def.label}`, def.label, doc._id, {
+    const resultDoc = updated || doc;
+
+    await logActivity(req as AuthedRequest, `Updated ${def.label}`, def.label, resultDoc._id, {
       changes: key === "theme" ? themeDiff(before, req.body as Record<string, unknown>) : undefined,
     });
     await triggerRevalidation([def.tag, "settings", "site"]);
-    ok(res, doc);
+    ok(res, resultDoc);
   })
 );
 

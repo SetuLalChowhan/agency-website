@@ -20,6 +20,14 @@ const siteSettingsSchema = new Schema(
     logoDark: { type: String, default: "" },
     logoMobile: { type: String, default: "" },
     favicon: { type: String, default: "" },
+    loadingScreen: {
+      enabled: { type: Boolean, default: true },
+      title: { type: String, default: "" },
+      subtitle: { type: String, default: "" },
+      loadingText: { type: String, default: "Loading experience" },
+      showCounter: { type: Boolean, default: true },
+      duration: { type: Number, default: 1.55 },
+    },
     announcementBar: {
       enabled: { type: Boolean, default: false },
       text: { type: String, default: "" },

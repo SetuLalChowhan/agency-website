@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ApiError } from "@/lib/api";
 import { useSingleton } from "@/lib/singleton";
-import { Button, Card, Field, Input, Spinner, useToast } from "@/components/ui";
+import { Button, Card, Checkbox, Field, Input, Spinner, useToast } from "@/components/ui";
 import { ImageField } from "@/components/fields";
 import { Plus, Trash2 } from "lucide-react";
 
@@ -22,6 +22,12 @@ export default function SettingsPage() {
   if (loading || !data) return <Spinner label="Loading settings" />;
 
   const set = (key: string, value: any) => setData((d: any) => ({ ...d, [key]: value }));
+
+  const setLoader = (key: string, value: any) =>
+    setData((d: any) => ({
+      ...d,
+      loadingScreen: { ...(d.loadingScreen ?? {}), [key]: value },
+    }));
 
   const submit = async () => {
     const cleanSocials = socials.filter((s) => s.label.trim() || s.url.trim());
@@ -67,6 +73,54 @@ export default function SettingsPage() {
           <Field label="Founded year">
             <Input type="number" value={data.founded ?? 2014} onChange={(e) => set("founded", Number(e.target.value))} />
           </Field>
+        </div>
+      </Card>
+
+      <Card title="Loading Screen & Experience">
+        <div className="flex flex-col gap-4">
+          <Checkbox
+            checked={data.loadingScreen?.enabled !== false}
+            onChange={(v) => setLoader("enabled", v)}
+            label="Enable client loading screen animation"
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Loader Brand Title / Wordmark" hint="Defaults to site wordmark if left blank">
+              <Input
+                value={data.loadingScreen?.title ?? ""}
+                onChange={(e) => setLoader("title", e.target.value)}
+                placeholder={data.wordmark || "KERN®"}
+              />
+            </Field>
+            <Field label="Loader Subtitle / Category" hint="Top meta text (e.g. Independent digital studio)">
+              <Input
+                value={data.loadingScreen?.subtitle ?? ""}
+                onChange={(e) => setLoader("subtitle", e.target.value)}
+                placeholder={data.tagline || "Independent digital studio"}
+              />
+            </Field>
+            <Field label="Loading Status Text" hint="Bottom status text (e.g. Loading experience)">
+              <Input
+                value={data.loadingScreen?.loadingText ?? ""}
+                onChange={(e) => setLoader("loadingText", e.target.value)}
+                placeholder="Loading experience"
+              />
+            </Field>
+            <Field label="Animation Duration (seconds)">
+              <Input
+                type="number"
+                step="0.1"
+                value={data.loadingScreen?.duration ?? 1.55}
+                onChange={(e) => setLoader("duration", parseFloat(e.target.value) || 1.55)}
+              />
+            </Field>
+          </div>
+          <div className="pt-2">
+            <Checkbox
+              checked={data.loadingScreen?.showCounter !== false}
+              onChange={(v) => setLoader("showCounter", v)}
+              label="Display percentage progress counter (00% → 100%)"
+            />
+          </div>
         </div>
       </Card>
 

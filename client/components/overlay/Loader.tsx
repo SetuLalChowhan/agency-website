@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, animate, motion, useReducedMotion } from "framer-motion";
 import { Asterisk } from "@/components/ui/Asterisk";
 import { EASE } from "@/lib/animations";
+import type { CmsSettings } from "@/lib/cms";
 
 const READY_EVENT = "kern:ready";
 
@@ -11,15 +12,22 @@ export function dispatchReady() {
   window.dispatchEvent(new Event(READY_EVENT));
 }
 
-export function Loader() {
+export function Loader({ settings }: { settings?: CmsSettings }) {
   const [count, setCount] = useState(0);
   const [exiting, setExiting] = useState(false);
   const [gone, setGone] = useState(false);
   const reduced = useReducedMotion();
 
+  const loaderCfg = settings?.loadingScreen;
+  const isEnabled = loaderCfg?.enabled !== false;
+  const brandTitle = loaderCfg?.title || settings?.wordmark || settings?.name || "KERN®";
+  const subtitle = loaderCfg?.subtitle || settings?.tagline || "Independent digital studio";
+  const loadingText = loaderCfg?.loadingText || "Loading experience";
+  const showCounter = loaderCfg?.showCounter !== false;
+  const duration = typeof loaderCfg?.duration === "number" && loaderCfg.duration > 0 ? loaderCfg.duration : 1.55;
+
   useEffect(() => {
-    const seen = sessionStorage.getItem("kern:seen");
-    if (reduced || seen) {
+    if (!isEnabled || reduced) {
       // Defer to the next frame so the loader unmounts after first paint.
       const id = requestAnimationFrame(() => {
         setGone(true);
@@ -29,7 +37,7 @@ export function Loader() {
     }
 
     const controls = animate(0, 100, {
-      duration: 1.55,
+      duration: duration,
       ease: [0.16, 1, 0.3, 1],
       onUpdate: (v) => setCount(Math.round(v)),
       onComplete: () => {
@@ -44,16 +52,16 @@ export function Loader() {
         dispatchReady();
         setExiting(true);
       }
-    }, 4000);
+    }, Math.max(duration * 1000 + 1500, 3500));
 
     return () => {
       controls.stop();
       window.clearTimeout(safety);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced]);
+  }, [reduced, isEnabled, duration]);
 
-  if (gone) return null;
+  if (gone || !isEnabled) return null;
 
   return (
     <AnimatePresence onExitComplete={() => setGone(true)}>
@@ -70,16 +78,16 @@ export function Loader() {
               initial={{ scale: 0.7, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.9, ease: EASE, delay: 0.1 }}
-              className="relative"
+              className="relative flex flex-col items-center"
             >
               <Asterisk className="h-16 w-16 text-acid md:h-24 md:w-24" />
               <motion.span
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: EASE, delay: 0.45 }}
-                className="display absolute left-1/2 top-full mt-4 -translate-x-1/2 text-xl text-paper md:text-2xl"
+                className="display absolute left-1/2 top-full mt-4 -translate-x-1/2 whitespace-nowrap text-xl text-paper md:text-2xl"
               >
-                KERN®
+                {brandTitle}
               </motion.span>
             </motion.div>
           </div>
@@ -91,7 +99,7 @@ export function Loader() {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="meta-label z-10 text-smoke"
           >
-            Independent digital studio
+            {subtitle}
           </motion.p>
 
           {/* Bottom row */}
@@ -102,20 +110,22 @@ export function Loader() {
               transition={{ duration: 0.8, delay: 0.3 }}
               className="meta-label text-smoke"
             >
-              Loading experience
+              {loadingText}
             </motion.p>
-            <div className="flex flex-col items-end gap-3">
-              <div className="display text-6xl leading-none tracking-tighter text-paper md:text-8xl">
-                {String(count).padStart(2, "0")}
-                <span className="text-acid">%</span>
+            {showCounter && (
+              <div className="flex flex-col items-end gap-3">
+                <div className="display text-6xl leading-none tracking-tighter text-paper md:text-8xl">
+                  {String(count).padStart(2, "0")}
+                  <span className="text-acid">%</span>
+                </div>
+                <div className="h-px w-44 bg-paper/15">
+                  <motion.div
+                    className="h-full bg-acid"
+                    style={{ width: `${count}%` }}
+                  />
+                </div>
               </div>
-              <div className="h-px w-44 bg-paper/15">
-                <motion.div
-                  className="h-full bg-acid"
-                  style={{ width: `${count}%` }}
-                />
-              </div>
-            </div>
+            )}
           </div>
         </motion.div>
       )}

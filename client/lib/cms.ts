@@ -73,15 +73,7 @@ async function cmsFetch<T>(
   empty: T,
   revalidate: number = REVALIDATE
 ): Promise<CmsResult<T>> {
-  // /api/v1/... → /api/cms/... (same origin, proxied to the CMS server).
-  // Guard against a relative URL ever reaching fetch: if the origin somehow
-  // failed to resolve, call the CMS API directly instead.
-  const proxyPath = `${await appOrigin()}${path.replace(/^\/api\/v1/, "/api/cms")}`;
-  const url = /^https?:\/\//i.test(proxyPath)
-    ? proxyPath
-    : CMS_API_URL
-      ? `${CMS_API_URL}${path}`
-      : proxyPath;
+  const url = CMS_API_URL ? `${CMS_API_URL.replace(/\/+$/, "")}${path}` : `${await appOrigin()}${path.replace(/^\/api\/v1/, "/api/cms")}`;
 
   for (let attempt = 1; attempt <= CMS_MAX_ATTEMPTS; attempt += 1) {
     try {
@@ -193,7 +185,18 @@ export type CmsSettings = {
   location?: string;
   founded?: number;
   url?: string;
+  logo?: string;
+  logoDark?: string;
+  logoMobile?: string;
   favicon?: string;
+  loadingScreen?: {
+    enabled?: boolean;
+    title?: string;
+    subtitle?: string;
+    loadingText?: string;
+    showCounter?: boolean;
+    duration?: number;
+  };
   socials?: Array<{ label: string; url: string; handle: string }>;
   announcementBar?: { enabled?: boolean; text?: string; link?: string };
   globalCta?: { enabled?: boolean; label?: string; href?: string };

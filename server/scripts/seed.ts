@@ -22,7 +22,7 @@ import {
   SeoDefaults,
   HomePage,
 } from "../src/models/settings";
-import { Service, Project, Testimonial } from "../src/models/content";
+import { Service, Project, Testimonial, TeamMember, FAQ } from "../src/models/content";
 import { BlogPost, BlogCategory } from "../src/models/blog";
 
 const { DATABASE_URL, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD } = process.env;
@@ -537,7 +537,18 @@ async function main() {
     logger.info("Seed: SUPER_ADMIN exists — skipping");
   }
 
-  await upsertSingleton(SiteSettings, { ...SITE, announcementBar: { enabled: false, text: "", link: "" } });
+  await upsertSingleton(SiteSettings, {
+    ...SITE,
+    loadingScreen: {
+      enabled: true,
+      title: "KERN®",
+      subtitle: "Independent digital studio",
+      loadingText: "Loading experience",
+      showCounter: true,
+      duration: 1.55,
+    },
+    announcementBar: { enabled: false, text: "", link: "" },
+  });
   await upsertSingleton(ThemeSettings, {});
   await upsertSingleton(Navigation, { items: NAV_ITEMS, cta: { label: "Let's Talk", href: "/contact", enabled: true } });
   await upsertSingleton(Footer, {
@@ -620,6 +631,98 @@ async function main() {
     posts++;
   }
   logger.info(`Seed: BlogPost — ${posts} created`);
+
+  // Team Members
+  const TEAM_MEMBERS = [
+    {
+      name: "Alex Rivera",
+      position: "Principal & Creative Director",
+      bio: "Focusing on the intersection of typography, systems design and expressive interaction.",
+      image: "/images/studio/portrait.svg",
+      skills: ["Creative Direction", "Brand Systems", "Interaction Design"],
+      order: 0,
+      visible: true,
+    },
+    {
+      name: "Elena Rostova",
+      position: "Head of Engineering",
+      bio: "Building high-performance web applications and resilient headless architectures.",
+      image: "/images/studio/portrait.svg",
+      skills: ["Next.js", "TypeScript", "Distributed Systems", "WebGL"],
+      order: 1,
+      visible: true,
+    },
+    {
+      name: "Marcus Vance",
+      position: "Design Systems Lead",
+      bio: "Translating brand identities into scalable, tokenized multi-platform component systems.",
+      image: "/images/studio/portrait.svg",
+      skills: ["Design Systems", "UI/UX", "Motion Graphics"],
+      order: 2,
+      visible: true,
+    },
+    {
+      name: "Sara Chen",
+      position: "Director of Product Strategy",
+      bio: "Bridging business positioning, user research and high-velocity digital execution.",
+      image: "/images/studio/portrait.svg",
+      skills: ["Product Strategy", "User Research", "Market Positioning"],
+      order: 3,
+      visible: true,
+    },
+  ];
+
+  let teamCreated = 0;
+  for (const m of TEAM_MEMBERS) {
+    const exists = await TeamMember.findOne({ name: m.name });
+    if (!exists) {
+      await TeamMember.create(m);
+      teamCreated++;
+    }
+  }
+  logger.info(`Seed: TeamMember — ${teamCreated} created`);
+
+  // FAQs
+  const FAQS = [
+    {
+      question: "What is your typical project timeline?",
+      answer: "Most core studio engagements range from 4 to 12 weeks depending on scope, complexity, and systems integration.",
+      category: "Process",
+      order: 0,
+      enabled: true,
+    },
+    {
+      question: "How do you structure engagements?",
+      answer: "We work in dedicated sprint blocks or retained partnership models with clear weekly deliverables and direct team access.",
+      category: "Pricing & Scope",
+      order: 1,
+      enabled: true,
+    },
+    {
+      question: "Do you work with early-stage startups as well as enterprises?",
+      answer: "Yes. We partner with high-growth seed/Series A startups redefining categories as well as global enterprise teams modernizing design systems.",
+      category: "Clients",
+      order: 2,
+      enabled: true,
+    },
+    {
+      question: "What technologies do you specialize in?",
+      answer: "Next.js, React, TypeScript, Tailwind CSS, headless CMS architectures, Node.js microservices, and AI workflow automation.",
+      category: "Technology",
+      order: 3,
+      enabled: true,
+    },
+  ];
+
+  let faqsCreated = 0;
+  for (const f of FAQS) {
+    const exists = await FAQ.findOne({ question: f.question });
+    if (!exists) {
+      await FAQ.create(f);
+      faqsCreated++;
+    }
+  }
+  logger.info(`Seed: FAQ — ${faqsCreated} created`);
 
   await mongoose.disconnect();
   logger.info("Seed complete");
