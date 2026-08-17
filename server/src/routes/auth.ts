@@ -14,8 +14,8 @@ const router = Router();
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: env.cookieSecure,
-  sameSite: "lax" as const,
+  secure: env.isProd || env.cookieSecure,
+  sameSite: (env.isProd || env.cookieSecure ? "none" : "lax") as "none" | "lax",
   maxAge: 12 * 60 * 60 * 1000,
   path: "/",
 };

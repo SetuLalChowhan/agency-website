@@ -1,5 +1,24 @@
 const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
+const TOKEN_KEY = "kern_admin_jwt";
+
+export function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAuthToken(token: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {}
+}
+
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -27,6 +46,11 @@ export async function api<T = unknown>(
 ): Promise<T> {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers["content-type"] = "application/json";
+
+  const token = getAuthToken();
+  if (token) {
+    headers["authorization"] = `Bearer ${token}`;
+  }
 
   const res = await fetch(`${API}${path}`, {
     method,

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, Menu, Monitor, Moon, Shield, Sun } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, setAuthToken } from "@/lib/api";
 import type { AdminUser } from "@/lib/types";
 import { useToast } from "@/components/ui";
 import { useTheme, type Theme } from "@/components/theme";
@@ -26,7 +26,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   }, []);
 
   const logout = async () => {
-    await api("/api/v1/auth/logout", { method: "POST" });
+    try {
+      await api("/api/v1/auth/logout", { method: "POST" });
+    } catch {}
+    setAuthToken(null);
     toast("Signed out");
     router.replace("/login");
   };

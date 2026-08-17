@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, setAuthToken } from "@/lib/api";
 import { Button, Field, Input, useToast } from "@/components/ui";
 
 function LoginForm() {
@@ -21,10 +21,13 @@ function LoginForm() {
     setError("");
     setLoading(true);
     try {
-      await api("/api/v1/auth/login", {
+      const res = await api<{ success: boolean; data?: { token?: string } }>("/api/v1/auth/login", {
         method: "POST",
         body: { email, password },
       });
+      if (res.data?.token) {
+        setAuthToken(res.data.token);
+      }
       toast("Welcome back");
       router.replace(params.get("next") ?? "/");
     } catch (err) {
