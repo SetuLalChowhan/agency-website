@@ -42,7 +42,7 @@ const GROUPS: Array<{ label: string; items: Array<{ href: string; label: string;
       { href: "/website/navigation", label: "Navigation", icon: Workflow },
       { href: "/website/footer", label: "Footer", icon: Layers },
       { href: "/website/announcement", label: "Announcement & CTA", icon: Megaphone },
-      { href: "/home", label: "Homepage sections", icon: Home },
+      { href: "/home", label: "Page sections & builder", icon: Home },
     ],
   },
   {

@@ -1,40 +1,311 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  Copy,
+  ExternalLink,
+  Layers,
+  Layout,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
+import { api, ApiError } from "@/lib/api";
 import { useSingleton } from "@/lib/singleton";
-import { Button, Card, Checkbox, Dialog, Field, Input, Select, Spinner, useToast } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Card,
+  Checkbox,
+  Dialog,
+  Field,
+  Input,
+  Select,
+  Spinner,
+  Textarea,
+  useConfirm,
+  useToast,
+} from "@/components/ui";
 import { ImageField, RowsEditor, TagsInput } from "@/components/fields";
-import type { HomeSection } from "@/lib/types";
-import { ApiError } from "@/lib/api";
+import { slugify } from "@/lib/slugify";
 
-const SECTION_TYPES = [
-  { value: "hero", label: "Hero" },
-  { value: "marquee", label: "Capabilities marquee" },
-  { value: "selected-work", label: "Selected work" },
-  { value: "horizontal-projects", label: "Fresh from the studio" },
-  { value: "services", label: "Services" },
-  { value: "process", label: "Process" },
-  { value: "about", label: "About teaser" },
-  { value: "stats", label: "Stats" },
-  { value: "testimonials", label: "Testimonials" },
-  { value: "clients", label: "Clients" },
-  { value: "insights", label: "Insights teaser" },
-  { value: "cta", label: "Final CTA" },
+type PageSection = {
+  _id?: string;
+  type: string;
+  key: string;
+  label: string;
+  enabled: boolean;
+  order: number;
+  heading?: string;
+  subheading?: string;
+  body?: string;
+  eyebrow?: string;
+  image?: string;
+  cta?: { label?: string; href?: string };
+  secondaryCta?: { label?: string; href?: string };
+  stats?: Array<{ value?: string; label?: string }>;
+  items?: Array<{ index?: string; title?: string; body?: string; value?: string; label?: string }>;
+  clients?: Array<{ name?: string; mark?: string }>;
+  marquee?: string[];
+  meta?: Record<string, any>;
+};
+
+type PageDoc = {
+  _id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  sections: PageSection[];
+  seo?: {
+    title?: string;
+    description?: string;
+    ogImage?: string;
+  };
+};
+
+const SECTION_TEMPLATES = [
+  {
+    type: "hero",
+    label: "Hero Header",
+    description: "Editorial introduction with headline, eyebrow and call to action",
+    defaultData: {
+      heading: "Building what matters.",
+      subheading: "Typography, layout, and motion systems built to scale.",
+      eyebrow: "Studio",
+      cta: { label: "Get in touch", href: "/contact" },
+      secondaryCta: { label: "Learn more", href: "#content" },
+    },
+  },
+  {
+    type: "text",
+    label: "Editorial Text Block",
+    description: "Clean narrative section with headline and philosophy body",
+    defaultData: {
+      heading: "A point of view on digital craft.",
+      eyebrow: "Philosophy",
+      body: "We believe exceptional software is built by small, highly aligned teams with relentless attention to detail.",
+    },
+  },
+  {
+    type: "split",
+    label: "Media + Text Split",
+    description: "Side-by-side featured imagery with descriptive text and link",
+    defaultData: {
+      heading: "Crafted for speed & clarity.",
+      eyebrow: "Our Approach",
+      body: "Every decision is intentional. From initial system architecture to the final 4px alignment.",
+      image: "/images/studio/portrait.svg",
+      cta: { label: "Explore capabilities", href: "/services" },
+    },
+  },
+  {
+    type: "features",
+    label: "Features / Values Grid",
+    description: "Multi-column feature cards with index numbers and descriptions",
+    defaultData: {
+      heading: "Our Core Principles",
+      eyebrow: "Values",
+      items: [
+        { index: "01", title: "Obsession", body: "We notice the 4px nobody asked about, and we fix it." },
+        { index: "02", title: "Precision", body: "Words, spacing and data agree with each other — or we don't ship." },
+        { index: "03", title: "Candor", body: "We tell you when an idea is bad to save months of effort." },
+        { index: "04", title: "Momentum", body: "Weekly builds, visible progress, and zero mystery." },
+      ],
+    },
+  },
+  {
+    type: "services",
+    label: "Services Showcase",
+    description: "Embed dynamic services from the CMS or custom capability grid",
+    defaultData: {
+      heading: "Full-Spectrum Digital Services",
+      eyebrow: "What We Do",
+      body: "From strategic positioning to production engineering and AI automation.",
+      cta: { label: "All services", href: "/services" },
+    },
+  },
+  {
+    type: "portfolio",
+    label: "Portfolio / Selected Work",
+    description: "Showcase selected client case studies and digital products",
+    defaultData: {
+      heading: "Selected Case Studies",
+      eyebrow: "Work",
+      body: "Recent digital products, brand platforms, and web applications.",
+      cta: { label: "View all work", href: "/work" },
+    },
+  },
+  {
+    type: "team",
+    label: "Team Members Grid",
+    description: "Display studio directors, leads, and engineers dynamically",
+    defaultData: {
+      heading: "The People Behind the Work",
+      eyebrow: "Team",
+      body: "A dedicated team of designers, engineers, and strategists.",
+    },
+  },
+  {
+    type: "testimonials",
+    label: "Client Testimonials",
+    description: "Showcase client endorsements and verified reviews",
+    defaultData: {
+      heading: "Trusted by forward-thinking teams",
+      eyebrow: "Client Words",
+    },
+  },
+  {
+    type: "faqs",
+    label: "FAQ Accordion",
+    description: "Interactive frequently asked questions accordion",
+    defaultData: {
+      heading: "Frequently Asked Questions",
+      eyebrow: "Clarity",
+      body: "Everything you need to know before partnering with us.",
+      items: [
+        { title: "What is your typical project timeline?", body: "Engagements typically range from 4 to 12 weeks." },
+        { title: "How do you structure sprints?", body: "We work in weekly iterative sprint blocks with direct team access." },
+      ],
+    },
+  },
+  {
+    type: "stats",
+    label: "Stats & Metrics",
+    description: "Highlight key performance numbers and metrics",
+    defaultData: {
+      heading: "Impact in Numbers",
+      eyebrow: "Metrics",
+      stats: [
+        { value: "10+", label: "Years of Craft" },
+        { value: "48h", label: "Average Response Time" },
+        { value: "100%", label: "Client Satisfaction" },
+        { value: "14", label: "Studio Members" },
+      ],
+    },
+  },
+  {
+    type: "insights",
+    label: "Blog / Insights Grid",
+    description: "Latest editorial articles, thinking, and essays",
+    defaultData: {
+      heading: "Notes from the Studio",
+      eyebrow: "Insights",
+      cta: { label: "All articles", href: "/insights" },
+    },
+  },
+  {
+    type: "cta",
+    label: "Final Call to Action",
+    description: "High-impact conversion section with action button",
+    defaultData: {
+      heading: "Have a project in mind?",
+      eyebrow: "New Business",
+      body: "Let's build something exceptional together.",
+      cta: { label: "Start a conversation", href: "/contact" },
+    },
+  },
+  {
+    type: "contact",
+    label: "Contact Inquiry Form",
+    description: "Interactive project inquiry and lead capture form",
+    defaultData: {
+      heading: "Let's Talk",
+      eyebrow: "Get In Touch",
+      body: "Tell us about your project, timeline, and goals.",
+    },
+  },
+  {
+    type: "marquee",
+    label: "Capabilities Marquee",
+    description: "Infinite animated text ribbon of studio capabilities",
+    defaultData: {
+      marquee: ["STRATEGY", "DESIGN SYSTEMS", "NEXT.JS", "AI AUTOMATION", "MOTION", "BRANDING"],
+    },
+  },
 ];
 
-export default function HomePage() {
-  const { data, setData, loading, saving, saved, save } = useSingleton<any>("homepage");
+export default function UnifiedPageSectionsBuilder() {
   const { toast } = useToast();
-  const [editing, setEditing] = useState<HomeSection | null>(null);
-  const [creating, setCreating] = useState(false);
+  const { confirm } = useConfirm();
 
-  if (loading || !data) return <Spinner label="Loading homepage sections" />;
+  // Active tab ("home" or page._id or page.slug)
+  const [activeTab, setActiveTab] = useState<string>("home");
 
-  const sections: HomeSection[] = ((data.sections ?? []) as HomeSection[]).sort((a: HomeSection, b: HomeSection) => (a.order ?? 0) - (b.order ?? 0));
-  const setSections = (next: HomeSection[]) => setData((d: any) => ({ ...d, sections: next.map((s, i) => ({ ...s, order: i })) }));
+  // Home singleton data
+  const homeSingleton = useSingleton<any>("homepage");
 
-  const move = (index: number, dir: -1 | 1) => {
+  // Custom pages from MongoDB
+  const [pages, setPages] = useState<PageDoc[]>([]);
+  const [loadingPages, setLoadingPages] = useState(true);
+
+  // Selected custom page (when activeTab !== "home")
+  const [selectedPage, setSelectedPage] = useState<PageDoc | null>(null);
+  const [pageSaving, setPageSaving] = useState(false);
+  const [pageSaved, setPageSaved] = useState(false);
+
+  // Section editing modal
+  const [editingSection, setEditingSection] = useState<PageSection | null>(null);
+  const [isCreatingSection, setIsCreatingSection] = useState(false);
+  const [pickingTemplate, setPickingTemplate] = useState(false);
+
+  // New Page creation modal
+  const [creatingPage, setCreatingPage] = useState(false);
+  const [newPageTitle, setNewPageTitle] = useState("");
+  const [newPageSlug, setNewPageSlug] = useState("");
+  const [newPageDesc, setNewPageDesc] = useState("");
+  const [savingNewPage, setSavingNewPage] = useState(false);
+
+  const loadPages = useCallback(async () => {
+    setLoadingPages(true);
+    try {
+      const res = await api<{ data: PageDoc[] }>("/api/v1/admin/content/pages?limit=50&sort=order&dir=asc");
+      setPages(res.data ?? []);
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Failed to load pages", "error");
+    } finally {
+      setLoadingPages(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadPages();
+  }, [loadPages]);
+
+  // Sync selected custom page when activeTab changes
+  useEffect(() => {
+    if (activeTab === "home") {
+      setSelectedPage(null);
+    } else {
+      const p = pages.find((page) => page._id === activeTab || page.slug === activeTab);
+      if (p) setSelectedPage(p);
+    }
+  }, [activeTab, pages]);
+
+  // Active sections based on tab
+  const isHome = activeTab === "home";
+  const rawSections: PageSection[] = isHome
+    ? (homeSingleton.data?.sections ?? [])
+    : (selectedPage?.sections ?? []);
+
+  const sections: PageSection[] = [...rawSections].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const setSections = (next: PageSection[]) => {
+    const ordered = next.map((s, i) => ({ ...s, order: i }));
+    if (isHome) {
+      homeSingleton.setData((d: any) => ({ ...d, sections: ordered }));
+    } else if (selectedPage) {
+      setSelectedPage({ ...selectedPage, sections: ordered });
+      setPages(pages.map((p) => (p._id === selectedPage._id ? { ...p, sections: ordered } : p)));
+    }
+  };
+
+  const moveSection = (index: number, dir: -1 | 1) => {
     const next = [...sections];
     const target = index + dir;
     if (target < 0 || target >= next.length) return;
@@ -42,293 +313,603 @@ export default function HomePage() {
     setSections(next);
   };
 
-  const toggle = (index: number) => {
+  const toggleSection = (index: number) => {
     setSections(sections.map((s, i) => (i === index ? { ...s, enabled: !s.enabled } : s)));
   };
 
-  const remove = async (index: number) => {
-    if (!window.confirm("Remove this section from the homepage?")) return;
-    setSections(sections.filter((_, i) => i !== index));
-  };
-
-  const duplicate = (index: number) => {
-    const copy = { ...sections[index], key: `${sections[index].key}-copy`, label: `${sections[index].label} (copy)` };
+  const duplicateSection = (index: number) => {
+    const s = sections[index];
+    const copy: PageSection = {
+      ...s,
+      key: `${s.type}-${Date.now()}`,
+      label: `${s.label} (Copy)`,
+      order: index + 1,
+    };
     const next = [...sections];
     next.splice(index + 1, 0, copy);
     setSections(next);
+    toast("Section duplicated");
   };
 
-  const addSection = (type: string) => {
-    setEditing({
-      type,
-      key: `${type}-${Date.now()}`,
-      label: SECTION_TYPES.find((t) => t.value === type)?.label ?? type,
+  const deleteSection = async (index: number) => {
+    const ok = await confirm(`Remove section "${sections[index].label}" from this page?`);
+    if (!ok) return;
+    setSections(sections.filter((_, i) => i !== index));
+  };
+
+  const startAddSection = (tmpl: (typeof SECTION_TEMPLATES)[number]) => {
+    const newSec: PageSection = {
+      type: tmpl.type,
+      key: `${tmpl.type}-${Date.now()}`,
+      label: tmpl.label,
       enabled: true,
       order: sections.length,
-      heading: "",
-      body: "",
-      eyebrow: "",
-      items: [],
-      stats: [],
-      clients: [],
-      marquee: [],
-      meta: {},
-    });
-    setCreating(true);
+      ...tmpl.defaultData,
+    };
+    setEditingSection(newSec);
+    setIsCreatingSection(true);
+    setPickingTemplate(false);
   };
 
+  const saveEditingSection = (sec: PageSection) => {
+    if (isCreatingSection) {
+      setSections([...sections, sec]);
+    } else {
+      setSections(sections.map((s) => (s.key === sec.key ? sec : s)));
+    }
+    setEditingSection(null);
+    setIsCreatingSection(false);
+  };
+
+  const handleSavePage = async () => {
+    if (isHome) {
+      homeSingleton.save({ sections });
+    } else if (selectedPage) {
+      setPageSaving(true);
+      setPageSaved(false);
+      try {
+        const res = await api<{ data: PageDoc }>(`/api/v1/admin/content/pages/${selectedPage._id}`, {
+          method: "PATCH",
+          body: {
+            title: selectedPage.title,
+            slug: selectedPage.slug,
+            description: selectedPage.description,
+            status: selectedPage.status,
+            seo: selectedPage.seo,
+            sections,
+          },
+        });
+        if (res.data) {
+          setSelectedPage(res.data);
+          setPages(pages.map((p) => (p._id === res.data._id ? res.data : p)));
+        }
+        setPageSaved(true);
+        toast(`"${selectedPage.title}" sections saved to MongoDB ✓`);
+        setTimeout(() => setPageSaved(false), 3000);
+      } catch (err) {
+        toast(err instanceof ApiError ? err.message : "Failed to save page", "error");
+      } finally {
+        setPageSaving(false);
+      }
+    }
+  };
+
+  const handleCreateNewPage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPageTitle.trim()) {
+      toast("Please enter a page title", "error");
+      return;
+    }
+    setSavingNewPage(true);
+    try {
+      const slug = slugify(newPageSlug || newPageTitle);
+      const res = await api<{ data: PageDoc }>("/api/v1/admin/content/pages", {
+        method: "POST",
+        body: {
+          title: newPageTitle.trim(),
+          slug,
+          description: newPageDesc.trim(),
+          status: "PUBLISHED",
+          sections: [
+            {
+              type: "hero",
+              key: `hero-${Date.now()}`,
+              label: "Hero Section",
+              enabled: true,
+              order: 0,
+              heading: newPageTitle.trim(),
+              subheading: newPageDesc.trim() || "Dynamic page built with KERN CMS.",
+              eyebrow: "Page",
+              cta: { label: "Explore", href: "#content" },
+            },
+          ],
+        },
+      });
+      toast("New page created and added to tabs ✓");
+      setCreatingPage(false);
+      setNewPageTitle("");
+      setNewPageSlug("");
+      setNewPageDesc("");
+      await loadPages();
+      if (res.data?._id) {
+        setActiveTab(res.data._id);
+      }
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Failed to create page", "error");
+    } finally {
+      setSavingNewPage(false);
+    }
+  };
+
+  if (homeSingleton.loading || loadingPages) {
+    return <Spinner label="Loading page sections hub..." />;
+  }
+
+  const activeLiveUrl = isHome
+    ? "/"
+    : `/${selectedPage?.slug ?? ""}`;
+
   return (
-    <div className="flex flex-col gap-6">
-      <header className="flex items-end justify-between gap-4">
+    <div className="flex flex-col gap-6 pb-16">
+      {/* Top Header */}
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="display text-3xl text-paper">Homepage sections</h1>
-          <p className="mt-1 text-sm text-smoke">Enable, reorder and edit every section on the public homepage.</p>
+          <h1 className="display text-3xl text-paper">Page Sections & Visual Builder</h1>
+          <p className="mt-1 text-sm text-smoke">
+            Manage, customize, and reorder dynamic sections for every website page from one unified hub.
+          </p>
         </div>
-        <Button variant="primary" onClick={() => save({ sections })} loading={saving}>
-          {saved ? "Saved ✓" : "Save homepage"}
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button variant="outline" onClick={() => window.open(activeLiveUrl, "_blank")}>
+            <ExternalLink className="h-3.5 w-3.5" /> View Live Page
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSavePage}
+            loading={isHome ? homeSingleton.saving : pageSaving}
+          >
+            {(isHome ? homeSingleton.saved : pageSaved) ? "Saved ✓" : `Save ${isHome ? "Homepage" : selectedPage?.title ?? "Page"}`}
+          </Button>
+        </div>
       </header>
 
-      <Card
-        title={`Sections (${sections.length})`}
-        actions={
-          <div className="flex items-center gap-2">
-            <Select
-              defaultValue=""
-              onChange={(e) => {
-                if (e.target.value) addSection(e.target.value);
-                e.target.value = "";
-              }}
-              className="w-56"
+      {/* Pages Tabs Navigation Bar */}
+      <div className="flex items-center justify-between border-b border-line bg-ink pb-px overflow-x-auto">
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab("home")}
+            className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              activeTab === "home"
+                ? "border-acid text-paper bg-ink-2"
+                : "border-transparent text-stone hover:text-paper"
+            }`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-acid" />
+            Home Page (/)
+          </button>
+
+          {pages.map((p) => (
+            <button
+              key={p._id}
+              type="button"
+              onClick={() => setActiveTab(p._id)}
+              className={`flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition-colors whitespace-nowrap ${
+                activeTab === p._id || activeTab === p.slug
+                  ? "border-acid text-paper bg-ink-2"
+                  : "border-transparent text-stone hover:text-paper"
+              }`}
             >
-              <option value="">Add section…</option>
-              {SECTION_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </Select>
+              <span className="font-mono text-[10px] text-stone">/{p.slug}</span>
+              <span>{p.title}</span>
+            </button>
+          ))}
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCreatingPage(true)}
+          className="my-1.5 mr-2 flex-none"
+        >
+          <Plus className="h-3.5 w-3.5 text-acid" /> Add Page
+        </Button>
+      </div>
+
+      {/* Active Page Meta Bar (For custom pages) */}
+      {!isHome && selectedPage && (
+        <Card title="Page Configuration & SEO">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Field label="Page Title">
+              <Input
+                value={selectedPage.title}
+                onChange={(e) =>
+                  setSelectedPage({ ...selectedPage, title: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="URL Slug">
+              <Input
+                value={selectedPage.slug}
+                onChange={(e) =>
+                  setSelectedPage({ ...selectedPage, slug: slugify(e.target.value) })
+                }
+              />
+            </Field>
+            <Field label="Publish Status">
+              <Select
+                value={selectedPage.status}
+                onChange={(e) =>
+                  setSelectedPage({ ...selectedPage, status: e.target.value as any })
+                }
+              >
+                <option value="PUBLISHED">Published</option>
+                <option value="DRAFT">Draft</option>
+                <option value="ARCHIVED">Archived</option>
+              </Select>
+            </Field>
+            <Field label="SEO Title (Optional)" className="md:col-span-1">
+              <Input
+                value={selectedPage.seo?.title ?? ""}
+                onChange={(e) =>
+                  setSelectedPage({
+                    ...selectedPage,
+                    seo: { ...selectedPage.seo, title: e.target.value },
+                  })
+                }
+                placeholder={`${selectedPage.title} — KERN®`}
+              />
+            </Field>
+            <Field label="Meta Description" className="md:col-span-2">
+              <Input
+                value={selectedPage.seo?.description ?? selectedPage.description ?? ""}
+                onChange={(e) =>
+                  setSelectedPage({
+                    ...selectedPage,
+                    description: e.target.value,
+                    seo: { ...selectedPage.seo, description: e.target.value },
+                  })
+                }
+                placeholder="Meta description for search results..."
+              />
+            </Field>
           </div>
+        </Card>
+      )}
+
+      {/* Sections List Canvas */}
+      <Card
+        title={`${isHome ? "Homepage" : selectedPage?.title ?? "Page"} Sections (${sections.length})`}
+        actions={
+          <Button variant="primary" size="sm" onClick={() => setPickingTemplate(true)}>
+            <Plus className="h-3.5 w-3.5" /> Add Section
+          </Button>
         }
       >
-        <ul className="divide-y divide-line">
-          {sections.map((section, i) => (
-            <li key={section.key} className="flex items-center gap-3 py-3">
-              <div className="flex flex-col gap-0.5">
-                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="text-stone hover:text-paper disabled:opacity-30" aria-label="Move up">
-                  <ArrowUp className="h-3.5 w-3.5" />
-                </button>
-                <button type="button" onClick={() => move(i, 1)} disabled={i === sections.length - 1} className="text-stone hover:text-paper disabled:opacity-30" aria-label="Move down">
-                  <ArrowDown className="h-3.5 w-3.5" />
-                </button>
+        {sections.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center">
+            <Layers className="h-10 w-10 text-stone" />
+            <h3 className="mt-4 text-base font-medium text-paper">No sections added yet</h3>
+            <p className="mt-1 max-w-sm text-xs text-smoke">
+              Click &quot;Add Section&quot; to choose from Hero, Services, Team, FAQs, Split Media, and CTA templates.
+            </p>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setPickingTemplate(true)}
+              className="mt-5"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add First Section
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {sections.map((sec, i) => (
+              <div
+                key={sec.key || i}
+                className={`flex items-center justify-between rounded border p-4 transition-all ${
+                  sec.enabled
+                    ? "border-line bg-ink hover:border-paper/40"
+                    : "border-line/40 bg-ink/40 opacity-60"
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moveSection(i, -1)}
+                      disabled={i === 0}
+                      className="rounded p-1 text-stone hover:text-paper disabled:opacity-20"
+                      aria-label="Move up"
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="font-mono text-[10px] text-stone">{String(i + 1).padStart(2, "0")}</span>
+                    <button
+                      type="button"
+                      onClick={() => moveSection(i, 1)}
+                      disabled={i === sections.length - 1}
+                      className="rounded p-1 text-stone hover:text-paper disabled:opacity-20"
+                      aria-label="Move down"
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-paper">{sec.label || sec.heading || sec.type}</span>
+                      <span className="meta-label rounded border border-line bg-ink-2 px-1.5 py-0.5 text-[9px] text-acid">
+                        {sec.type}
+                      </span>
+                    </div>
+                    {sec.heading && <p className="text-xs text-smoke truncate max-w-md">{sec.heading}</p>}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={sec.enabled !== false}
+                    onChange={() => toggleSection(i)}
+                    label={sec.enabled ? "Active" : "Disabled"}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingSection({ ...sec });
+                      setIsCreatingSection(false);
+                    }}
+                  >
+                    <Pencil className="h-3 w-3" /> Edit
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => duplicateSection(i)}
+                    className="rounded p-1.5 text-stone hover:text-paper"
+                    aria-label="Duplicate section"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteSection(i)}
+                    className="rounded p-1.5 text-stone hover:text-red-400"
+                    aria-label="Delete section"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-              <Checkbox checked={section.enabled !== false} onChange={() => toggle(i)} />
-              <button type="button" onClick={() => { setEditing({ ...section }); setCreating(false); }} className="min-w-0 flex-1 text-left">
-                <span className={`block text-sm font-medium ${section.enabled === false ? "text-stone line-through" : "text-paper"}`}>
-                  {section.label}
-                  <span className="meta-label ml-2 text-[9px] text-stone">{section.type}</span>
-                </span>
-                <span className="meta-label block truncate text-[10px] text-stone">
-                  {section.heading || section.eyebrow || section.key}
-                </span>
-              </button>
-              <button type="button" onClick={() => duplicate(i)} className="text-stone hover:text-paper" aria-label="Duplicate">
-                <Copy className="h-3.5 w-3.5" />
-              </button>
-              <button type="button" onClick={() => { setEditing({ ...section }); setCreating(false); }} className="text-stone hover:text-paper" aria-label="Edit">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button type="button" onClick={() => remove(i)} className="text-stone hover:text-red-400" aria-label="Delete">
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </li>
-          ))}
-          {sections.length === 0 && <li className="py-8 text-center text-sm text-stone">No sections — the homepage will only show the marquee defaults.</li>}
-        </ul>
+            ))}
+          </div>
+        )}
       </Card>
 
-      <SectionDialog
-        open={editing !== null}
-        section={editing}
-        creating={creating}
-        onClose={() => { setEditing(null); setCreating(false); }}
-        onSave={(section) => {
-          if (creating) setSections([...sections, section]);
-          else setSections(sections.map((s) => (s.key === section.key ? section : s)));
-          setEditing(null);
-          setCreating(false);
-          toast("Section updated — save the homepage to publish");
-        }}
-      />
+      {/* Add Section Template Picker Dialog */}
+      <Dialog
+        open={pickingTemplate}
+        onClose={() => setPickingTemplate(false)}
+        title="Add a Visual Section"
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 max-h-[60vh] overflow-y-auto pr-1">
+          {SECTION_TEMPLATES.map((tmpl) => (
+            <button
+              key={tmpl.type}
+              type="button"
+              onClick={() => startAddSection(tmpl)}
+              className="group flex flex-col gap-1.5 rounded border border-line bg-ink p-3.5 text-left hover:border-acid hover:bg-ink-2 transition-all"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-paper group-hover:text-acid">{tmpl.label}</span>
+                <span className="meta-label text-[9px] text-stone uppercase">{tmpl.type}</span>
+              </div>
+              <p className="text-xs text-smoke">{tmpl.description}</p>
+            </button>
+          ))}
+        </div>
+      </Dialog>
+
+      {/* Section Editor Modal */}
+      {editingSection && (
+        <Dialog
+          open={Boolean(editingSection)}
+          onClose={() => setEditingSection(null)}
+          title={`Configure ${editingSection.label || editingSection.type}`}
+        >
+          <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field label="Section Label">
+                <Input
+                  value={editingSection.label}
+                  onChange={(e) =>
+                    setEditingSection({ ...editingSection, label: e.target.value })
+                  }
+                  placeholder="e.g. Hero Banner"
+                />
+              </Field>
+              <Field label="Eyebrow / Tag">
+                <Input
+                  value={editingSection.eyebrow ?? ""}
+                  onChange={(e) =>
+                    setEditingSection({ ...editingSection, eyebrow: e.target.value })
+                  }
+                  placeholder="e.g. 01 / Overview"
+                />
+              </Field>
+            </div>
+
+            <Field label="Headline / Title">
+              <Input
+                value={editingSection.heading ?? ""}
+                onChange={(e) =>
+                  setEditingSection({ ...editingSection, heading: e.target.value })
+                }
+                placeholder="Main headline text"
+              />
+            </Field>
+
+            <Field label="Subheading / Tagline">
+              <Input
+                value={editingSection.subheading ?? ""}
+                onChange={(e) =>
+                  setEditingSection({ ...editingSection, subheading: e.target.value })
+                }
+                placeholder="Secondary descriptive headline"
+              />
+            </Field>
+
+            <Field label="Body Copy / Content">
+              <Textarea
+                value={editingSection.body ?? ""}
+                onChange={(e) =>
+                  setEditingSection({ ...editingSection, body: e.target.value })
+                }
+                rows={4}
+                placeholder="Detailed narrative text..."
+              />
+            </Field>
+
+            <Field label="Featured Image / Media">
+              <ImageField
+                value={editingSection.image ?? ""}
+                onChange={(img) => setEditingSection({ ...editingSection, image: img })}
+              />
+            </Field>
+
+            {/* CTAs */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 border-t border-line pt-3">
+              <Field label="Primary Button Label">
+                <Input
+                  value={editingSection.cta?.label ?? ""}
+                  onChange={(e) =>
+                    setEditingSection({
+                      ...editingSection,
+                      cta: { ...editingSection.cta, label: e.target.value },
+                    })
+                  }
+                  placeholder="e.g. Get Started"
+                />
+              </Field>
+              <Field label="Primary Button Link">
+                <Input
+                  value={editingSection.cta?.href ?? ""}
+                  onChange={(e) =>
+                    setEditingSection({
+                      ...editingSection,
+                      cta: { ...editingSection.cta, href: e.target.value },
+                    })
+                  }
+                  placeholder="e.g. /contact"
+                />
+              </Field>
+            </div>
+
+            {/* Repeatable Items (Features, FAQs, Process) */}
+            {(editingSection.type === "features" ||
+              editingSection.type === "faqs" ||
+              editingSection.type === "process" ||
+              editingSection.items?.length) && (
+              <div className="border-t border-line pt-3">
+                <label className="text-xs font-medium text-paper">Repeatable Items / FAQs / Steps</label>
+                <RowsEditor
+                  value={editingSection.items ?? []}
+                  onChange={(items) => setEditingSection({ ...editingSection, items })}
+                  subfields={[
+                    { key: "index", label: "Index (e.g. 01)", type: "text" },
+                    { key: "title", label: "Title / Question", type: "text" },
+                    { key: "body", label: "Description / Answer", type: "textarea" },
+                  ]}
+                />
+              </div>
+            )}
+
+            {/* Stats List */}
+            {(editingSection.type === "stats" || editingSection.stats?.length) && (
+              <div className="border-t border-line pt-3">
+                <label className="text-xs font-medium text-paper">Statistics & Numbers</label>
+                <RowsEditor
+                  value={editingSection.stats ?? []}
+                  onChange={(stats) => setEditingSection({ ...editingSection, stats })}
+                  subfields={[
+                    { key: "value", label: "Value (e.g. 10+)", type: "text" },
+                    { key: "label", label: "Label (e.g. Years of Craft)", type: "text" },
+                  ]}
+                />
+              </div>
+            )}
+
+            {/* Marquee Tags */}
+            {(editingSection.type === "marquee" || editingSection.marquee?.length) && (
+              <div className="border-t border-line pt-3">
+                <label className="text-xs font-medium text-paper">Marquee Words</label>
+                <TagsInput
+                  value={editingSection.marquee ?? []}
+                  onChange={(marquee) => setEditingSection({ ...editingSection, marquee })}
+                  placeholder="Type word and press enter..."
+                />
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-end gap-2 border-t border-line pt-3">
+              <Button variant="outline" onClick={() => setEditingSection(null)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={() => saveEditingSection(editingSection)}>
+                Save Section
+              </Button>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Create New Page Dialog */}
+      <Dialog
+        open={creatingPage}
+        onClose={() => setCreatingPage(false)}
+        title="Add New Dynamic Page"
+      >
+        <form onSubmit={handleCreateNewPage} className="flex flex-col gap-4">
+          <Field label="Page Title">
+            <Input
+              value={newPageTitle}
+              onChange={(e) => {
+                setNewPageTitle(e.target.value);
+                if (!newPageSlug || newPageSlug === slugify(newPageTitle)) {
+                  setNewPageSlug(slugify(e.target.value));
+                }
+              }}
+              placeholder="e.g. Studio Culture, Manifesto, Partners"
+              autoFocus
+              required
+            />
+          </Field>
+          <Field label="URL Slug" hint="Public URL path (e.g. /culture)">
+            <Input
+              value={newPageSlug}
+              onChange={(e) => setNewPageSlug(slugify(e.target.value))}
+              placeholder="culture"
+              required
+            />
+          </Field>
+          <Field label="Short Description">
+            <Textarea
+              value={newPageDesc}
+              onChange={(e) => setNewPageDesc(e.target.value)}
+              placeholder="Brief summary of this page..."
+              rows={3}
+            />
+          </Field>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button variant="outline" type="button" onClick={() => setCreatingPage(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" loading={savingNewPage}>
+              Create Page & Add Sections →
+            </Button>
+          </div>
+        </form>
+      </Dialog>
     </div>
-  );
-}
-
-function SectionDialog({
-  open,
-  section,
-  creating,
-  onClose,
-  onSave,
-}: {
-  open: boolean;
-  section: HomeSection | null;
-  creating: boolean;
-  onClose: () => void;
-  onSave: (section: HomeSection) => void;
-}) {
-  const [form, setForm] = useState<HomeSection | null>(null);
-
-  useEffect(() => {
-    if (open && section) setForm(JSON.parse(JSON.stringify(section)));
-  }, [open, section]);
-
-  if (!form) return null;
-
-  const set = (key: string, value: any) => setForm((f) => (f ? { ...f, [key]: value } : f));
-
-  return (
-    <Dialog open={open} onClose={onClose} title={creating ? "New section" : `Edit section — ${form.label}`} wide>
-      <div className="flex flex-col gap-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Label (admin only)">
-            <Input value={form.label ?? ""} onChange={(e) => set("label", e.target.value)} />
-          </Field>
-          <Field label="Key">
-            <Input value={form.key ?? ""} onChange={(e) => set("key", e.target.value)} className="font-mono text-xs" />
-          </Field>
-          <Field label="Eyebrow / meta label">
-            <Input value={form.eyebrow ?? ""} onChange={(e) => set("eyebrow", e.target.value)} />
-          </Field>
-          <Field label="Index (e.g. 04 capabilities)">
-            <Input value={form.index ?? ""} onChange={(e) => set("index", e.target.value)} />
-          </Field>
-        </div>
-
-        <Field label="Heading">
-          <Input value={form.heading ?? ""} onChange={(e) => set("heading", e.target.value)} />
-        </Field>
-        <Field label="Body">
-          <textarea
-            className="w-full border border-line bg-ink-2 px-3 py-2 text-sm text-paper focus:border-acid focus:outline-none"
-            rows={3}
-            value={form.body ?? ""}
-            onChange={(e) => set("body", e.target.value)}
-          />
-        </Field>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Image">
-            <ImageField value={form.image ?? ""} onChange={(v) => set("image", v)} />
-          </Field>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="CTA label">
-            <Input value={form.cta?.label ?? ""} onChange={(e) => set("cta", { ...(form.cta ?? {}), label: e.target.value })} />
-          </Field>
-          <Field label="CTA href">
-            <Input value={form.cta?.href ?? ""} onChange={(e) => set("cta", { ...(form.cta ?? {}), href: e.target.value })} />
-          </Field>
-          <Field label="Secondary CTA label">
-            <Input value={form.secondaryCta?.label ?? ""} onChange={(e) => set("secondaryCta", { ...(form.secondaryCta ?? {}), label: e.target.value })} />
-          </Field>
-          <Field label="Secondary CTA href">
-            <Input value={form.secondaryCta?.href ?? ""} onChange={(e) => set("secondaryCta", { ...(form.secondaryCta ?? {}), href: e.target.value })} />
-          </Field>
-        </div>
-
-        {(form.type === "marquee" || form.type === "hero") && (
-          <Field label="Marquee words" hint="One per line.">
-            <TagsInput value={form.marquee ?? []} onChange={(v) => set("marquee", v)} />
-          </Field>
-        )}
-
-        {(form.type === "stats") && (
-          <Field label="Stats" hint="Value, suffix and label.">
-            <RowsEditor
-              value={(form.stats ?? []).map((s) => ({ ...s, value: s.value ?? "", suffix: s.suffix ?? "", label: s.label ?? "" }))}
-              subfields={[
-                { key: "value", label: "Value", type: "text" },
-                { key: "suffix", label: "Suffix", type: "text" },
-                { key: "label", label: "Label", type: "text" },
-              ]}
-              onChange={(v) => set("stats", v)}
-            />
-          </Field>
-        )}
-
-        {(form.type === "hero" || form.type === "cta") && (
-          <Field label="Headline lines" hint="Each line is a row. Use the accent mark column to italicize a line.">
-            <RowsEditor
-              value={(form.items ?? []).map((it) => ({ ...it, index: it.index ?? "", title: it.title ?? "", mark: it.mark ?? "" }))}
-              subfields={[
-                { key: "title", label: "Line", type: "text" },
-                { key: "mark", label: "Accent (accent = italic highlight)", type: "text" },
-              ]}
-              onChange={(v) => set("items", v)}
-            />
-          </Field>
-        )}
-
-        {form.type === "process" && (
-          <Field label="Process steps" hint="Index, title, detail and deliverables (one per line).">
-            <RowsEditor
-              value={(form.items ?? []).map((it) => ({
-                ...it,
-                index: it.index ?? "",
-                title: it.title ?? "",
-                value: it.value ?? "",
-                body: it.body ?? "",
-                paragraphs: Array.isArray(it.paragraphs) ? it.paragraphs.join("\n") : (it.paragraphs as string) ?? "",
-              }))}
-              subfields={[
-                { key: "index", label: "Index (01, 02…)", type: "text" },
-                { key: "title", label: "Title", type: "text" },
-                { key: "value", label: "Summary", type: "textarea" },
-                { key: "body", label: "Detail", type: "textarea" },
-                { key: "paragraphs", label: "Deliverables (one per line)", type: "textarea" },
-              ]}
-              onChange={(v) => set("items", v)}
-            />
-          </Field>
-        )}
-
-        {form.type === "about" && (
-          <Field label="Facts" hint="Label / value pairs (Founded 2014, Team 14 people…).">
-            <RowsEditor
-              value={(form.meta?.facts as Array<Record<string, string>>) ?? []}
-              subfields={[
-                { key: "label", label: "Label", type: "text" },
-                { key: "value", label: "Value", type: "text" },
-              ]}
-              onChange={(v) => set("meta", { ...(form.meta ?? {}), facts: v })}
-            />
-          </Field>
-        )}
-
-        {form.type === "clients" && (
-          <Field label="Client names" hint="Name + optional mark symbol.">
-            <RowsEditor
-              value={(form.clients ?? []).map((c) => ({ ...c, name: c.name ?? "", mark: c.mark ?? "" }))}
-              subfields={[
-                { key: "name", label: "Name", type: "text" },
-                { key: "mark", label: "Mark", type: "text" },
-              ]}
-              onChange={(v) => set("clients", v)}
-            />
-          </Field>
-        )}
-
-        {(form.type === "cta") && (
-          <Field label="Ring text" hint="Rotating text around the button.">
-            <Input value={(form.meta?.ring as string) ?? ""} onChange={(e) => set("meta", { ...(form.meta ?? {}), ring: e.target.value })} />
-          </Field>
-        )}
-
-        <div className="flex items-center justify-end gap-3 border-t border-line pt-5">
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={() => onSave(form)}>{creating ? "Add section" : "Save section"}</Button>
-        </div>
-      </div>
-    </Dialog>
   );
 }
